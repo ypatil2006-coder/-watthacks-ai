@@ -26,12 +26,11 @@
 2. [Solution Description & AI Integration](#-2-solution-description--ai-integration)
 3. [Direct Competitor Differentiation Matrix](#-3-direct-competitor-differentiation-matrix)
 4. [System Architecture](#-4-system-architecture)
-5. [3–4 Minute Demo Video Script](#-5-34-minute-demo-video-script)
-6. [Assignment Tech Stack Compliance](#-6-assignment-tech-stack-compliance)
-7. [Core Features & Application Walkthrough](#-7-core-features--application-walkthrough)
-8. [REST API Catalog](#-8-rest-api-catalog)
-9. [Local Development & Setup](#-9-local-development--setup)
-10. [Deployment Guide (GitHub, Vercel & Render)](#-10-deployment-guide-github-vercel--render)
+5. [Assignment Tech Stack Compliance](#-5-assignment-tech-stack-compliance)
+6. [Core Features & Application Walkthrough](#-6-core-features--application-walkthrough)
+7. [REST API Catalog](#-7-rest-api-catalog)
+8. [Local Development & Setup](#-8-local-development--setup)
+9. [Deployment Guide (GitHub, Vercel & Render)](#-9-deployment-guide-github-vercel--render)
 
 ---
 
@@ -55,9 +54,9 @@ Commercial facilities, IT tech parks (e.g., Pune Hinjewadi & Bengaluru Electroni
 **WattHacks AI** is an autonomous, $0 CAPEX, software-agnostic energy intelligence and tariff arbitrage platform. It transforms complex utility bills and fragmented facility equipment into an automated, carbon-minimizing powerhouse:
 
 ### 🤖 How Artificial Intelligence is Integrated (Google Gemini API)
-* **Multimodal Utility Bill Vision OCR (`gemini-1.5-flash` / `gemini-3.8-flash`):**  
+* **Multimodal Utility Bill Vision OCR (`gemini-3.7-flash`):**  
   Facility managers drag and drop complex MSEDCL/BESCOM/Tata Power electricity bill PDFs, meter photos, or diesel generator fuel logs. The Google Gemini Multimodal Vision API extracts consumer details, sanctioned contract demand (kVA), billed active energy units (kWh), power factor, and exact ToD slot splits in seconds with zero manual data entry.
-* **Automated Executive BRSR Audit Synthesis:**  
+* **Automated Executive BRSR Audit Synthesis (`gemini-3.7-flash`):**  
   Gemini analyzes facility power consumption and autonomous load-shifting data to synthesize statutory SEBI BRSR Principle 6 audit reports, engineering work orders, and Scope 1 & 2 carbon disclosures with a cryptographic SHA-256 digital verification seal.
 * **Secure Backend Architecture:**  
   The Google Gemini API key is strictly maintained and executed in backend environment variables (`backend/.env`), with zero client-side exposure.
@@ -80,7 +79,7 @@ We believe in radical architectural honesty. Here is how **WattHacks AI** direct
 | **Hardware Lock-in** | **Severe:** Proprietary controllers, proprietary bus cables, vendor lock-in | **High:** Proprietary utility gateway unit | **Medium:** Specific CT current clamps | **Zero:** 100% Software-Agnostic (BACnet / Modbus TCP / MQTT) |
 | **Autonomous ToD Arbitrage** | ❌ Rule-based static schedules only | ✅ Wholesale energy capacity market trading | ❌ None (Passive alerts only) | **✅ Autonomous ToD Arbitrage** (DISCOM & regional grid aligned) |
 | **Regional Grid Carbon Engine** | ❌ Not tracked | ⚠️ US / EU ISO grids only (PJM, CAISO) | ❌ Static national averages only | **✅ India CEA 0.716 kg/kWh & Western Grid (IN-WE) Live Diurnal Model** |
-| **Multimodal Utility Bill OCR** | ❌ None (Manual technician entry) | ❌ None (Enterprise EDI data only) | ❌ None (Manual entry) | **✅ Google Gemini 1.5/2.5 Multimodal OCR** (PDF & Image Ingestion) |
+| **Multimodal Utility Bill OCR** | ❌ None (Manual technician entry) | ❌ None (Enterprise EDI data only) | ❌ None (Manual entry) | **✅ Google Gemini 3.7 Flash Multimodal OCR** (PDF & Image Ingestion) |
 | **Statutory ESG Reporting** | ❌ None (Requires 3rd-party consultant) | ⚠️ Custom corporate exports | ❌ Raw CSV energy exports only | **✅ SEBI BRSR Principle 6 & ISO 14064 One-Click Verified Audit** |
 | **Primary Economic Target** | Greenfield industrial plants & massive hospitals | 10MW+ Utility-scale battery farms | Small retail shops & single sub-meters | **Commercial Campuses, IT Parks, Hospitals & C&I Facilities** |
 
@@ -114,7 +113,7 @@ We believe in radical architectural honesty. Here is how **WattHacks AI** direct
                            ▼                                            ▼
 ┌───────────────────────────────────────────────────────┐  ┌─────────────────────────────────────────────────────────────┐
 │                 GOOGLE GEMINI API                     │  │                     EXTERNAL SERVICES                       │
-│  • Gemini 1.5 / 2.5 Multimodal Vision                 │  │  • Open-Meteo High-Res Solar Irradiance (W/m²)              │
+│  • Gemini 3.7 Flash Multimodal Vision                 │  │  • Open-Meteo High-Res Solar Irradiance (W/m²)              │
 │  • Instant Bill OCR & ToD Table Parsing               │  │  • Real-Time Western Grid (IN-WE) Diurnal Carbon Feed       │
 │  • SEBI BRSR Core Executive Synthesis                 │  │  • Geolocation Reverse Geocoder (State & DISCOM resolution) │
 └───────────────────────────────────────────────────────┘  └─────────────────────────────────────────────────────────────┘
@@ -122,21 +121,7 @@ We believe in radical architectural honesty. Here is how **WattHacks AI** direct
 
 ---
 
-## 🎬 5. 3–4 Minute Demo Video Script
-
-Use this scene-by-scene script when recording your 3–5 minute demonstration video:
-
-| Time | Screen Action | Voiceover Script |
-| :--- | :--- | :--- |
-| **0:00 – 0:40** | **Landing Page (`/`)**<br>Scroll hero, hover cards, show fluid liquid navbar. | *"Every evening between 6 PM and 10 PM across India's commercial facilities, electricity tariffs jump by up to +₹1.50 per unit in peak surcharges, and the grid spins up dirty coal peaker plants, spiking emissions above 700 grams of CO₂ per kilowatt-hour. Traditional building automation costs upwards of ₹50 Lakhs in proprietary hardware. This is WattHacks AI — a $0 CAPEX, software-agnostic energy arbitrage platform."* |
-| **0:40 – 1:15** | **Competitor Table**<br>Scroll to comparison section. | *"Here is our transparent competitor matrix: compared to legacy giants like Schneider and Siemens who lock you into proprietary hardware, or high-cost utility SaaS like Stem, WattHacks connects to existing meters in 15 minutes, with live Indian Central Electricity Authority carbon tracking, currently free during beta access."* |
-| **1:15 – 2:05** | **Bill Intake (`/ingest`)**<br>Click 'Upload Bill', drop sample MSEDCL bill, watch progress bar. | *"Now let's see our Google Gemini Multimodal AI in action. Instead of tedious manual entry, facility managers drag and drop their utility bill PDF or meter photo. Our backend calls Gemini 1.5 Flash to extract the consumer ID, sanctioned demand (550 kVA), billed units, power factor, and exact ToD slot penalties in seconds. Missing on-site assets like solar arrays or battery capacity can be calibrated here."* |
-| **2:05 – 2:50** | **Audit Report (`/audit`)**<br>Click 'Generate Audit Report', show grade, line-item table, click 'Download PDF'. | *"In one click, WattHacks generates a comprehensive energy audit: the facility receives an efficiency rating (Grade C), detects ₹1.84 Lakhs in avoidable peak surcharges, and details a forensic line-item breakdown. It sizes the optimal battery storage and solar capacity, achieving a 0.6-month software payback, and produces a SEBI BRSR Principle 6 audit report with a cryptographic SHA-256 seal for board ESG disclosures."* |
-| **2:50 – 3:30** | **Live Grid Console (`/console`)**<br>Show real-time telemetry, 24-hr diurnal load curve, and power matrix. | *"Finally, our Live Grid Intelligence Console connects facility loads directly to the Western Regional Grid. It shows live solar output, battery dispatch, and an interactive 24-hour diurnal curve demonstrating how 260 kWh of flexible load was shifted from the expensive evening peak into the night rebate, saving ₹48,000 monthly and abating 5.4 tons of CO₂. WattHacks AI turns passive energy bills into active grid intelligence."* |
-
----
-
-## 🛠️ 6. Assignment Tech Stack Compliance
+## 🛠️ 5. Assignment Tech Stack Compliance
 
 | Assignment Tech Requirement | Required Choice | WattHacks AI Implementation |
 | :--- | :--- | :--- |
@@ -155,7 +140,7 @@ Use this scene-by-scene script when recording your 3–5 minute demonstration vi
 
 ---
 
-## 🖥️ 7. Core Features & Application Walkthrough
+## 🖥️ 6. Core Features & Application Walkthrough
 
 The platform features a **4-Page Unified Workflow** designed with a distinctive Luminous Eco-Acrylic liquid glass design:
 
@@ -179,7 +164,7 @@ The platform features a **4-Page Unified Workflow** designed with a distinctive 
 
 ---
 
-## 📡 8. REST API Catalog
+## 📡 7. REST API Catalog
 
 | Method | Endpoint | Description | Auth |
 | :--- | :--- | :--- | :--- |
@@ -200,7 +185,7 @@ The platform features a **4-Page Unified Workflow** designed with a distinctive 
 
 ---
 
-## 🛠️ 9. Local Development & Setup
+## 🛠️ 8. Local Development & Setup
 
 ### Prerequisites
 * **Node.js:** v18.0.0 or higher
@@ -232,7 +217,7 @@ Open your browser at: **`http://localhost:3000`**
 
 ---
 
-## 🚀 10. Deployment Guide (GitHub, Vercel & Render)
+## 🚀 9. Deployment Guide (GitHub, Vercel & Render)
 
 ### Push Updates to GitHub
 
