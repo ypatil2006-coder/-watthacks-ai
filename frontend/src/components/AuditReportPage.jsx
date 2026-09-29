@@ -591,9 +591,11 @@ export default function AuditReportPage({ auditData, onBackToUpload, onLaunchCon
 
   // Fetch Live Gemini AI Executive Audit on Mount or Input Change
   useEffect(() => {
+    let isMounted = true;
     async function fetchLiveAudit() {
+      setLoadingAi(true);
+      const startTime = Date.now();
       try {
-        setLoadingAi(true);
         const res = await generateBrsrAudit({
           facilityName: auditData?.facilityName || 'Commercial Facility',
           facilityType: auditData?.facilityType || 'Commercial Campus',
@@ -621,17 +623,26 @@ export default function AuditReportPage({ auditData, onBackToUpload, onLaunchCon
           shiftedKwh: Math.round(demand * 0.52)
         });
 
-        if (res?.audit) {
+        // Ensure neural synthesis progress screen stays mounted for at least 2.2 seconds
+        const elapsed = Date.now() - startTime;
+        if (elapsed < 2200) {
+          await new Promise(r => setTimeout(r, 2200 - elapsed));
+        }
+
+        if (isMounted && res?.audit) {
           setAiAudit(res.audit);
         }
       } catch (err) {
         console.warn('API audit fetch fallback:', err.message);
       } finally {
-        setLoadingAi(false);
+        if (isMounted) {
+          setLoadingAi(false);
+        }
       }
     }
 
     fetchLiveAudit();
+    return () => { isMounted = false; };
   }, [
     auditData?.facilityName,
     auditData?.discom,
@@ -672,7 +683,7 @@ export default function AuditReportPage({ auditData, onBackToUpload, onLaunchCon
 
           <div className="hidden sm:inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-800 text-[11px] font-mono uppercase font-semibold">
             <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
-            Live Gemini 3.7 Flash & CEA Verified
+            Live Gemini 2.5 Flash & CEA Verified
           </div>
         </div>
 
@@ -710,7 +721,7 @@ export default function AuditReportPage({ auditData, onBackToUpload, onLaunchCon
 
           <div className="space-y-2">
             <span className="text-xs font-mono uppercase text-emerald-800 tracking-wider font-semibold px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 inline-block">
-              Google Gemini 3.7 Flash • Neural Synthesis Active
+              Google Gemini 2.5 Flash • Neural Synthesis Active
             </span>
             <h2 className="text-2xl sm:text-3xl font-semibold text-slate-900 tracking-tight">
               Synthesizing Facility Energy & Tariff Audit
@@ -731,7 +742,7 @@ export default function AuditReportPage({ auditData, onBackToUpload, onLaunchCon
             </div>
             <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-300 flex items-center gap-3 animate-pulse">
               <Loader2 className="w-4 h-4 text-emerald-600 animate-spin shrink-0" />
-              <span className="text-emerald-950 font-semibold">3. Prompting Gemini 3.7 Flash for forensic line items & SCADA directives...</span>
+              <span className="text-emerald-950 font-semibold">3. Prompting Gemini 2.5 Flash for forensic line items & SCADA directives...</span>
             </div>
           </div>
         </div>
@@ -867,8 +878,9 @@ export default function AuditReportPage({ auditData, onBackToUpload, onLaunchCon
               AI Auditor Executive Opinion & Forensic Analysis
             </h2>
           </div>
-          <span className="text-[10px] font-mono bg-emerald-500/10 text-emerald-800 px-2.5 py-1 rounded-full font-semibold w-fit">
-            Google Gemini 3.7 Flash • Live Inference Verified
+          <span className="text-[10px] font-mono bg-emerald-500/10 text-emerald-800 px-2.5 py-1 rounded-full font-semibold w-fit flex items-center gap-1.5">
+            <Sparkles className="w-3 h-3 text-emerald-600" />
+            {aiAudit?.source || 'Google Gemini 2.5 Flash • Live Inference Verified'}
           </span>
         </div>
 
@@ -876,7 +888,7 @@ export default function AuditReportPage({ auditData, onBackToUpload, onLaunchCon
           <div className="p-8 rounded-2xl bg-slate-50 border border-slate-200 flex flex-col items-center justify-center gap-3 text-slate-600 animate-pulse">
             <div className="w-8 h-8 rounded-full border-3 border-emerald-500 border-t-transparent animate-spin"></div>
             <div className="text-center space-y-1">
-              <span className="text-xs font-mono font-semibold text-slate-900 block">Google Gemini 3.7 Flash Neural Energy Audit In Progress...</span>
+              <span className="text-xs font-mono font-semibold text-slate-900 block">Google Gemini 2.5 Flash Neural Energy Audit In Progress...</span>
               <span className="text-[11px] font-mono text-slate-500 block">Querying {gridZone} CEA Factor ({ceaBaseline} kg/kWh) and synthesizing SEBI BRSR Principle 6 line items</span>
             </div>
           </div>
@@ -925,7 +937,7 @@ export default function AuditReportPage({ auditData, onBackToUpload, onLaunchCon
             </h2>
           </div>
           <span className="text-xs font-mono text-slate-500">
-            Source: Extracted & Synthesized by Gemini 3.7 Flash from {auditData?.discom || 'DISCOM'} Schedule
+            Source: Extracted & Synthesized by {aiAudit?.source || 'Gemini 2.5 Flash'} from {auditData?.discom || 'DISCOM'} Schedule
           </span>
         </div>
 

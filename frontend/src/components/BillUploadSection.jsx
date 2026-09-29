@@ -92,14 +92,14 @@ export default function BillUploadSection({ onExtractComplete }) {
     setExtracting(true);
     setSelectedFileName(customFileName || billDataOrFile?.fileName || billDataOrFile?.name || 'Uploaded_Bill.pdf');
     setExtractProgress(20);
-    setExtractStatus('Connecting to Google Gemini 3.7 Flash Engine...');
+    setExtractStatus('Connecting to Google Gemini 2.5 Flash Engine...');
 
     try {
       let finalBill = null;
 
       if (billDataOrFile instanceof File || billDataOrFile instanceof Blob) {
         setExtractProgress(45);
-        setExtractStatus('Gemini 3.7 Flash parsing utility tables and ToD tariff registers...');
+        setExtractStatus('Gemini 2.5 Flash parsing utility tables and ToD tariff registers...');
         const res = await uploadBill(billDataOrFile);
         if (res?.extracted) {
           const ext = res.extracted;
@@ -123,22 +123,46 @@ export default function BillUploadSection({ onExtractComplete }) {
           };
         }
       } else {
-        // Predefined preset - Fast calibrated extraction with full regional data
-        setExtractProgress(65);
-        setExtractStatus(`Calibrated ${billDataOrFile.discom} (${billDataOrFile.gridZone}) parameters...`);
-        finalBill = {
-          ...billDataOrFile,
-          facilityName: billDataOrFile.facilityName || billDataOrFile.location,
-          location: billDataOrFile.location,
-          gridZone: billDataOrFile.gridZone,
-          ceaBaselineKgPerKwh: billDataOrFile.ceaBaseline,
-          latitude: billDataOrFile.latitude,
-          longitude: billDataOrFile.longitude,
-          liveSolarDni: billDataOrFile.liveSolarDni,
-          liveGridFreq: billDataOrFile.liveGridFreq,
-          peakPenaltyRate: billDataOrFile.peakPenaltyRate || 1.50,
-          nightRebateRate: billDataOrFile.nightRebateRate || 1.50
-        };
+        // Predefined preset - Live Gemini extraction and regional calibration
+        setExtractProgress(45);
+        setExtractStatus(`Connecting to Google Gemini 2.5 Flash for ${billDataOrFile.name}...`);
+        
+        try {
+          const res = await analyzePresetBill(billDataOrFile);
+          const extObs = res?.extracted?.keyAuditObservations;
+          finalBill = {
+            ...billDataOrFile,
+            ...(res?.extracted || {}),
+            facilityName: billDataOrFile.facilityName || billDataOrFile.location,
+            location: billDataOrFile.location,
+            gridZone: billDataOrFile.gridZone,
+            ceaBaselineKgPerKwh: billDataOrFile.ceaBaseline,
+            latitude: billDataOrFile.latitude,
+            longitude: billDataOrFile.longitude,
+            liveSolarDni: billDataOrFile.liveSolarDni,
+            liveGridFreq: billDataOrFile.liveGridFreq,
+            peakPenaltyRate: billDataOrFile.peakPenaltyRate || 1.50,
+            nightRebateRate: billDataOrFile.nightRebateRate || 1.50,
+            keyAuditObservations: extObs || billDataOrFile.keyAuditObservations
+          };
+          setExtractProgress(75);
+          setExtractStatus(`Gemini 2.5 Flash synthesized ${finalBill.discom} ToD profile...`);
+        } catch (presetErr) {
+          console.warn('Preset analysis notice:', presetErr);
+          finalBill = {
+            ...billDataOrFile,
+            facilityName: billDataOrFile.facilityName || billDataOrFile.location,
+            location: billDataOrFile.location,
+            gridZone: billDataOrFile.gridZone,
+            ceaBaselineKgPerKwh: billDataOrFile.ceaBaseline,
+            latitude: billDataOrFile.latitude,
+            longitude: billDataOrFile.longitude,
+            liveSolarDni: billDataOrFile.liveSolarDni,
+            liveGridFreq: billDataOrFile.liveGridFreq,
+            peakPenaltyRate: billDataOrFile.peakPenaltyRate || 1.50,
+            nightRebateRate: billDataOrFile.nightRebateRate || 1.50
+          };
+        }
       }
 
       setExtractProgress(90);
@@ -153,7 +177,7 @@ export default function BillUploadSection({ onExtractComplete }) {
             onExtractComplete(finalBill || SAMPLE_BILLS[0]);
           }
         }, 200);
-      }, 250);
+      }, 350);
 
     } catch (err) {
       console.warn('Bill extraction fallback:', err.message);
@@ -165,7 +189,7 @@ export default function BillUploadSection({ onExtractComplete }) {
         if (onExtractComplete) {
           onExtractComplete(fallbackBill);
         }
-      }, 200);
+      }, 250);
     }
   };
 

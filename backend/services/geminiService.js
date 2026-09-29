@@ -124,13 +124,14 @@ async function callGeminiRestApi({ prompt, fileBuffer, mimeType, modelName }) {
  */
 async function generateWithGemini({ prompt, fileBuffer, mimeType, modelName }) {
   loadEnv(true);
-  const primaryModel = modelName || process.env.GEMINI_MODEL || 'gemini-3.7-flash';
+  const primaryModel = modelName || process.env.GEMINI_MODEL || 'gemini-2.5-flash';
   const candidateModels = [
     ...new Set([
       primaryModel,
-      'gemini-3.7-flash',
       'gemini-2.5-flash',
-      'gemini-1.5-flash'
+      'gemini-flash-latest',
+      'gemini-2.5-flash-lite',
+      'gemini-2.5-pro'
     ])
   ];
   let lastErr = null;
@@ -152,7 +153,7 @@ async function generateWithGemini({ prompt, fileBuffer, mimeType, modelName }) {
           model: currentModel,
           contents
         });
-        const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error(`Timeout after 5000ms on ${currentModel}`)), 5000));
+        const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error(`Timeout after 12000ms on ${currentModel}`)), 12000));
         const response = await Promise.race([generatePromise, timeoutPromise]);
         const textResult = response.text ? response.text.trim() : '';
         if (textResult) {
@@ -170,17 +171,14 @@ async function generateWithGemini({ prompt, fileBuffer, mimeType, modelName }) {
       const errMsg = err?.message || String(err);
       console.warn(`[Gemini Attempt] Model ${currentModel} error: ${errMsg}`);
 
-      // Fast-fail if API key is invalid/unauthorized: looping other models with same key adds pointless lag
+      // Fast-fail if API key is permanently invalid or unauthorized
       if (
         errMsg.includes('API key not valid') ||
         errMsg.includes('API_KEY_INVALID') ||
         errMsg.includes('PERMISSION_DENIED') ||
-        errMsg.includes('UNAUTHENTICATED') ||
-        errMsg.includes('400') ||
-        errMsg.includes('403') ||
-        errMsg.includes('keyExpired')
+        errMsg.includes('UNAUTHENTICATED')
       ) {
-        console.warn(`[Gemini Auth] API key invalid or unauthorized (${errMsg.slice(0, 80)}...). Skipping candidate iterations.`);
+        console.warn(`[Gemini Auth] API key invalid or unauthorized. Skipping candidate iterations.`);
         break;
       }
       continue;
@@ -194,7 +192,7 @@ async function generateWithGemini({ prompt, fileBuffer, mimeType, modelName }) {
  */
 export async function extractBillData(fileBuffer, mimeType = 'application/pdf', allowDemoFallback = false) {
   const configured = isGeminiConfigured();
-  const modelName = process.env.GEMINI_MODEL || 'gemini-3.7-flash';
+  const modelName = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
 
   if (fileBuffer && configured) {
     try {
@@ -382,7 +380,7 @@ export async function extractBillData(fileBuffer, mimeType = 'application/pdf', 
  */
 export async function extractPresetBillData(presetInput = {}) {
   const configured = isGeminiConfigured();
-  const modelName = process.env.GEMINI_MODEL || 'gemini-3.7-flash';
+  const modelName = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
 
   const discom = presetInput.discom || presetInput.name || 'MSEDCL (Maharashtra) • HT-1 Commercial';
   const facilityName = presetInput.location || presetInput.name || 'Commercial Facility Node';
@@ -514,7 +512,7 @@ export async function extractPresetBillData(presetInput = {}) {
  */
 export async function generateExecutiveAudit(facilityInfo, savingsData, emissionsData = null) {
   const configured = isGeminiConfigured();
-  const modelName = process.env.GEMINI_MODEL || 'gemini-3.7-flash';
+  const modelName = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
 
   const facility = {
     name: facilityInfo?.name || "Commercial Facility",
