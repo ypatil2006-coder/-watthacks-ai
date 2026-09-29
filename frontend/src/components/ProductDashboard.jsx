@@ -157,9 +157,21 @@ function DiurnalDashboardGraph({ demand = 500 }) {
 }
 
 export default function ProductDashboard({ onBack }) {
-  // Mode: 'intake' | 'dashboard'
-  const [viewMode, setViewMode] = useState('intake');
+  // Mode: 'intake' | 'dashboard' (persisted so refresh stays in console if already launched)
+  const [viewMode, setViewMode] = useState(() => {
+    try {
+      return sessionStorage.getItem('watthacks_console_view_mode') || 'intake';
+    } catch (e) {
+      return 'intake';
+    }
+  });
   const [intakeStep, setIntakeStep] = useState(1); // 1: Facility & Tariff | 2: Hardware & Assets | 3: Connected Subsystems
+
+  useEffect(() => {
+    try {
+      sessionStorage.setItem('watthacks_console_view_mode', viewMode);
+    } catch (e) {}
+  }, [viewMode]);
 
   // Facility Form State
   const [formData, setFormData] = useState({
@@ -385,6 +397,13 @@ export default function ProductDashboard({ onBack }) {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  const handleBackToHome = () => {
+    try {
+      sessionStorage.removeItem('watthacks_console_view_mode');
+    } catch (e) {}
+    onBack();
+  };
+
   return (
     <div className="relative z-10 w-full min-h-screen py-8 animate-fadeIn">
       {/* ======================================================== */}
@@ -395,7 +414,7 @@ export default function ProductDashboard({ onBack }) {
           {/* Top Bar with Back Button */}
           <div className="flex items-center justify-between">
             <button
-              onClick={onBack}
+              onClick={handleBackToHome}
               className="px-4 py-2 rounded-xl bg-slate-900/5 hover:bg-slate-900 hover:text-white text-slate-700 text-xs font-mono transition-all flex items-center gap-2 cursor-pointer active:scale-95"
             >
               <ArrowLeft className="w-3.5 h-3.5" />
@@ -918,7 +937,7 @@ export default function ProductDashboard({ onBack }) {
           <div className="liquid-glass rounded-2xl p-4 md:p-5 flex flex-wrap items-center justify-between gap-4 shadow-xl border border-white/80">
             <div className="flex flex-wrap items-center gap-3 md:gap-4">
               <button
-                onClick={onBack}
+                onClick={handleBackToHome}
                 className="px-3 py-1.5 rounded-xl bg-slate-900/5 hover:bg-slate-900 hover:text-white text-slate-700 text-xs font-mono transition-all flex items-center gap-1.5 cursor-pointer active:scale-95"
               >
                 <ArrowLeft className="w-3.5 h-3.5" />

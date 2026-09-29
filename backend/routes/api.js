@@ -3,7 +3,7 @@ import multer from 'multer';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 import { z } from 'zod';
-import { extractBillData, generateExecutiveAudit, isGeminiConfigured } from '../services/geminiService.js';
+import { extractBillData, extractPresetBillData, generateExecutiveAudit, isGeminiConfigured } from '../services/geminiService.js';
 import {
   REGIONAL_PROFILES,
   calculateLiveTelemetry,
@@ -369,6 +369,20 @@ router.post('/bills/upload', upload.single('bill'), async (req, res) => {
   }
 });
 
+router.post('/bills/analyze-preset', async (req, res) => {
+  try {
+    const presetInput = req.body || {};
+    const extracted = await extractPresetBillData(presetInput);
+    res.json({
+      success: true,
+      extracted,
+      emissions: extracted.emissions
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 const manualBillSchema = z.object({
   consumerNumber: z.string().optional(),
   billingPeriod: z.string().optional(),
@@ -415,24 +429,39 @@ router.post('/bills/manual', (req, res) => {
 router.post('/audit/generate', async (req, res) => {
   try {
     const b = req.body || {};
-    const facilityInfo = b.facility || {
-      name: b.facilityName || b.name || "Commercial Facility",
-      facilityType: b.facilityType || "Commercial Campus",
-      discom: b.discom || "MSEDCL (Maharashtra)",
-      region: b.region || (b.discom?.includes('BESCOM') ? 'bengaluru' : b.discom?.includes('Tata Power') ? 'delhi' : 'pune'),
-      loadKva: Number(b.demand || b.contractDemandKva || b.loadKva || 500),
-      monthlyBill: Number(b.monthlyBill || b.billAmount || b.bill || 850000),
-      solarKwp: Number(b.solar || b.solarKwp || 0),
-      bessKwh: Number(b.bess || b.bessKwh || 0),
-      hasDg: Boolean(b.hasDg || (Array.isArray(b.equipment) && b.equipment.includes('dg'))),
-      equipment: Array.isArray(b.equipment) && b.equipment.length > 0 ? b.equipment : (b.equipmentList || ['hvac', 'inverter'])
+    const facilityRaw = b.facility || b;
+    const discomStr = facilityRaw.discom || b.discom || "MSEDCL (Maharashtra)";
+    const isBescom = discomStr.toUpperCase().includes('BESCOM') || (facilityRaw.region || '').toLowerCase().includes('bengaluru');
+    const isTata = discomStr.toUpperCase().includes('TATA') || discomStr.toUpperCase().includes('TPDDL') || (facilityRaw.region || '').toLowerCase().includes('delhi');
+
+    const resolvedGridZone = facilityRaw.gridZone || b.gridZone || (isBescom ? 'Southern Grid (IN-SO)' : isTata ? 'Northern Grid (IN-NO)' : 'Western Grid (IN-WE)');
+    const resolvedCea = Number(facilityRaw.ceaBaselineKgPerKwh || facilityRaw.ceaBaseline || b.ceaBaselineKgPerKwh || b.ceaBaseline) || (isBescom ? 0.690 : isTata ? 0.740 : 0.716);
+    const resolvedPeakRate = Number(facilityRaw.peakPenaltyRate || b.peakPenaltyRate) || (isBescom ? 1.25 : isTata ? 1.75 : 1.50);
+    const resolvedNightRate = Number(facilityRaw.nightRebateRate || b.nightRebateRate) || (isBescom ? 1.00 : isTata ? 1.20 : 1.50);
+
+    const facilityInfo = {
+      name: facilityRaw.name || facilityRaw.facilityName || b.facilityName || b.name || "Commercial Facility",
+      facilityType: facilityRaw.facilityType || b.facilityType || "Commercial Campus",
+      discom: discomStr,
+      region: facilityRaw.region || facilityRaw.location || b.region || b.location || (isBescom ? 'Bengaluru, Karnataka' : isTata ? 'Delhi-NCR / Haryana' : 'Pune, Maharashtra'),
+      gridZone: resolvedGridZone,
+      ceaBaseline: resolvedCea,
+      peakPenaltyRate: resolvedPeakRate,
+      nightRebateRate: resolvedNightRate,
+      loadKva: Number(facilityRaw.loadKva || facilityRaw.demand || b.demand || b.contractDemandKva || 500),
+      monthlyBill: Number(facilityRaw.monthlyBill || facilityRaw.billAmount || b.monthlyBill || b.billAmount || b.bill || 850000),
+      powerFactor: Number(facilityRaw.powerFactor || b.powerFactor || 0.98),
+      solarKwp: Number(facilityRaw.solarKwp || facilityRaw.solar || b.solar || b.solarKwp || 0),
+      bessKwh: Number(facilityRaw.bessKwh || facilityRaw.bess || b.bess || b.bessKwh || 0),
+      hasDg: Boolean(facilityRaw.hasDg || b.hasDg || (Array.isArray(facilityRaw.equipment || b.equipment) && (facilityRaw.equipment || b.equipment).includes('dg'))),
+      equipment: Array.isArray(facilityRaw.equipment || b.equipment) && (facilityRaw.equipment || b.equipment).length > 0 ? (facilityRaw.equipment || b.equipment) : (b.equipmentList || ['hvac', 'inverter'])
     };
 
     const loadKva = facilityInfo.loadKva || 500;
     const shifted = Number(b.shiftedLoadKwh || b.shiftedKwh || b.savings?.shiftedLoadKwh || Math.round(loadKva * 0.52));
-    const monthlySav = Number(b.monthlySavingsInr || b.monthlySavings || b.savings?.monthlySavingsInr || Math.round(shifted * 30 * 3.0));
+    const monthlySav = Number(b.monthlySavingsInr || b.monthlySavings || b.savings?.monthlySavingsInr || Math.round(shifted * 30 * (resolvedPeakRate + resolvedNightRate)));
     const annualSav = Number(b.annualSavingsInr || b.annualSavings || b.savings?.annualSavingsInr || monthlySav * 12);
-    const carbonAv = Number(b.carbonAbatedTons || b.monthlyCarbonAvoidedTons || b.savings?.monthlyCarbonAvoidedTons || +((shifted * 30 * 0.716) / 1000).toFixed(2));
+    const carbonAv = Number(b.carbonAbatedTons || b.monthlyCarbonAvoidedTons || b.savings?.monthlyCarbonAvoidedTons || +((shifted * 30 * resolvedCea) / 1000).toFixed(2));
 
     const savingsData = b.savings || {
       monthlySavingsInr: monthlySav,
@@ -447,7 +476,7 @@ router.post('/audit/generate', async (req, res) => {
       audit,
       certifiedStandards: [
         "SEBI BRSR Core Principle 6 (Energy & Emissions)",
-        "India CEA CO2 Baseline Database (Western Grid IN-WE 0.716 kg/kWh)",
+        `India CEA CO2 Baseline Database (${audit.facilityProfile?.gridZone || resolvedGridZone} ${audit.facilityProfile?.ceaBaseline || resolvedCea} kg/kWh)`,
         "GHG Protocol Corporate Standard (Scope 1 & Scope 2)"
       ]
     });
@@ -459,24 +488,39 @@ router.post('/audit/generate', async (req, res) => {
 router.post('/audit/export', async (req, res) => {
   try {
     const b = req.body || {};
-    const facilityInfo = b.facility || {
-      name: b.facilityName || b.name || "Commercial Facility",
-      facilityType: b.facilityType || "Commercial Campus",
-      discom: b.discom || "MSEDCL (Maharashtra)",
-      region: b.region || (b.discom?.includes('BESCOM') ? 'bengaluru' : b.discom?.includes('Tata Power') ? 'delhi' : 'pune'),
-      loadKva: Number(b.demand || b.contractDemandKva || b.loadKva || 500),
-      monthlyBill: Number(b.monthlyBill || b.billAmount || b.bill || 850000),
-      solarKwp: Number(b.solar || b.solarKwp || 0),
-      bessKwh: Number(b.bess || b.bessKwh || 0),
-      hasDg: Boolean(b.hasDg || (Array.isArray(b.equipment) && b.equipment.includes('dg'))),
-      equipment: Array.isArray(b.equipment) && b.equipment.length > 0 ? b.equipment : (b.equipmentList || ['hvac', 'inverter'])
+    const facilityRaw = b.facility || b;
+    const discomStr = facilityRaw.discom || b.discom || "MSEDCL (Maharashtra)";
+    const isBescom = discomStr.toUpperCase().includes('BESCOM') || (facilityRaw.region || '').toLowerCase().includes('bengaluru');
+    const isTata = discomStr.toUpperCase().includes('TATA') || discomStr.toUpperCase().includes('TPDDL') || (facilityRaw.region || '').toLowerCase().includes('delhi');
+
+    const resolvedGridZone = facilityRaw.gridZone || b.gridZone || (isBescom ? 'Southern Grid (IN-SO)' : isTata ? 'Northern Grid (IN-NO)' : 'Western Grid (IN-WE)');
+    const resolvedCea = Number(facilityRaw.ceaBaselineKgPerKwh || facilityRaw.ceaBaseline || b.ceaBaselineKgPerKwh || b.ceaBaseline) || (isBescom ? 0.690 : isTata ? 0.740 : 0.716);
+    const resolvedPeakRate = Number(facilityRaw.peakPenaltyRate || b.peakPenaltyRate) || (isBescom ? 1.25 : isTata ? 1.75 : 1.50);
+    const resolvedNightRate = Number(facilityRaw.nightRebateRate || b.nightRebateRate) || (isBescom ? 1.00 : isTata ? 1.20 : 1.50);
+
+    const facilityInfo = {
+      name: facilityRaw.name || facilityRaw.facilityName || b.facilityName || b.name || "Commercial Facility",
+      facilityType: facilityRaw.facilityType || b.facilityType || "Commercial Campus",
+      discom: discomStr,
+      region: facilityRaw.region || facilityRaw.location || b.region || b.location || (isBescom ? 'Bengaluru, Karnataka' : isTata ? 'Delhi-NCR / Haryana' : 'Pune, Maharashtra'),
+      gridZone: resolvedGridZone,
+      ceaBaseline: resolvedCea,
+      peakPenaltyRate: resolvedPeakRate,
+      nightRebateRate: resolvedNightRate,
+      loadKva: Number(facilityRaw.loadKva || facilityRaw.demand || b.demand || b.contractDemandKva || 500),
+      monthlyBill: Number(facilityRaw.monthlyBill || facilityRaw.billAmount || b.monthlyBill || b.billAmount || b.bill || 850000),
+      powerFactor: Number(facilityRaw.powerFactor || b.powerFactor || 0.98),
+      solarKwp: Number(facilityRaw.solarKwp || facilityRaw.solar || b.solar || b.solarKwp || 0),
+      bessKwh: Number(facilityRaw.bessKwh || facilityRaw.bess || b.bess || b.bessKwh || 0),
+      hasDg: Boolean(facilityRaw.hasDg || b.hasDg || (Array.isArray(facilityRaw.equipment || b.equipment) && (facilityRaw.equipment || b.equipment).includes('dg'))),
+      equipment: Array.isArray(facilityRaw.equipment || b.equipment) && (facilityRaw.equipment || b.equipment).length > 0 ? (facilityRaw.equipment || b.equipment) : (b.equipmentList || ['hvac', 'inverter'])
     };
 
     const loadKva = facilityInfo.loadKva || 500;
     const shifted = Number(b.shiftedLoadKwh || b.shiftedKwh || b.savings?.shiftedLoadKwh || Math.round(loadKva * 0.52));
-    const monthlySav = Number(b.monthlySavingsInr || b.monthlySavings || b.savings?.monthlySavingsInr || Math.round(shifted * 30 * 3.0));
+    const monthlySav = Number(b.monthlySavingsInr || b.monthlySavings || b.savings?.monthlySavingsInr || Math.round(shifted * 30 * (resolvedPeakRate + resolvedNightRate)));
     const annualSav = Number(b.annualSavingsInr || b.annualSavings || b.savings?.annualSavingsInr || monthlySav * 12);
-    const carbonAv = Number(b.carbonAbatedTons || b.monthlyCarbonAvoidedTons || b.savings?.monthlyCarbonAvoidedTons || +((shifted * 30 * 0.716) / 1000).toFixed(2));
+    const carbonAv = Number(b.carbonAbatedTons || b.monthlyCarbonAvoidedTons || b.savings?.monthlyCarbonAvoidedTons || +((shifted * 30 * resolvedCea) / 1000).toFixed(2));
 
     const savingsData = b.savings || {
       monthlySavingsInr: monthlySav,
@@ -500,12 +544,12 @@ router.post('/audit/export', async (req, res) => {
 ## 1. Facility & Utility Tariff Profile
 | Parameter | Audited Value |
 |---|---|
-| **Facility Name** | **${audit.facilityProfile?.name || facility?.name || 'Hinjewadi Tech Hub'}** |
-| **Regional DISCOM** | ${audit.facilityProfile?.discom || facility?.discom || 'MSEDCL (Mahavitaran)'} |
-| **Grid Zone** | Western Regional Grid (\`IN-WE\`) |
-| **Tariff Classification** | ${audit.facilityProfile?.tariffCategory || 'HT-I Commercial (Express Feeder)'} |
-| **Sanctioned Contract Demand** | **${audit.facilityProfile?.contractDemandKva || facility?.loadKva || 500} kVA** |
-| **Statutory Emission Baseline** | **0.716 kg CO₂/kWh** (Govt of India Central Electricity Authority Ver 19) |
+| **Facility Name** | **${audit.facilityProfile?.name || facilityInfo.name}** |
+| **Regional DISCOM** | ${audit.facilityProfile?.discom || facilityInfo.discom} |
+| **Grid Zone** | ${audit.facilityProfile?.gridZone || resolvedGridZone} |
+| **Tariff Classification** | ${audit.facilityProfile?.tariffCategory || 'HT Commercial'} |
+| **Sanctioned Contract Demand** | **${audit.facilityProfile?.contractDemandKva || loadKva} kVA** |
+| **Statutory Emission Baseline** | **${audit.facilityProfile?.ceaBaseline || resolvedCea} kg CO₂/kWh** (Central Electricity Authority Baseline Ver 19) |
 
 ---
 
@@ -515,12 +559,12 @@ ${audit.executiveSummary}
 ---
 
 ## 3. Financial Arbitrage Ledger & Tariff Delta Optimization
-* **Mathematical Arbitrage Model:** \`${audit.financialArbitrageLedger?.arbitrageRateFormula || 'Shiftable Load (kWh) * (₹1.50 peak surcharge avoided + ₹1.50 night rebate captured) = ₹3.00/kWh total delta'}\`
-* **Avoided Peak Surcharges (Zone D: 18:00 - 22:00):** ₹${(audit.financialArbitrageLedger?.peakSurchargeAvoidedMonthlyInr || 11700).toLocaleString('en-IN')} / month
-* **Captured Night Rebates (Zone E: 22:00 - 06:00):** ₹${(audit.financialArbitrageLedger?.nightRebateCapturedMonthlyInr || 11700).toLocaleString('en-IN')} / month
-* **Net Monthly Cost Reduction:** **₹${(audit.financialArbitrageLedger?.netMonthlySavingsInr || 23400).toLocaleString('en-IN')}**
-* **Projected Annual Financial Impact:** **₹${(audit.financialArbitrageLedger?.projectedAnnualSavingsInr || 280800).toLocaleString('en-IN')}**
-* **Software Investment Payback:** **${audit.financialArbitrageLedger?.softwarePaybackMonths || 1.4} Months** (Zero Capex Required)
+* **Mathematical Arbitrage Model:** \`${audit.financialArbitrageLedger?.arbitrageRateFormula || `Shiftable Load (${shifted} kWh) * (₹${resolvedPeakRate} peak surcharge avoided + ₹${resolvedNightRate} night rebate captured) = ₹${(resolvedPeakRate + resolvedNightRate).toFixed(2)}/kWh delta`}\`
+* **Avoided Peak Surcharges:** ₹${(audit.financialArbitrageLedger?.peakSurchargeAvoidedMonthlyInr || Math.round(monthlySav * 0.5)).toLocaleString('en-IN')} / month
+* **Captured Night Rebates:** ₹${(audit.financialArbitrageLedger?.nightRebateCapturedMonthlyInr || Math.round(monthlySav * 0.35)).toLocaleString('en-IN')} / month
+* **Net Monthly Cost Reduction:** **₹${(audit.financialArbitrageLedger?.netMonthlySavingsInr || monthlySav).toLocaleString('en-IN')}**
+* **Projected Annual Financial Impact:** **₹${(audit.financialArbitrageLedger?.projectedAnnualSavingsInr || annualSav).toLocaleString('en-IN')}**
+* **Software Investment Payback:** **${audit.financialArbitrageLedger?.softwarePaybackMonths || 1.2} Months** (Zero Capex Required)
 
 ---
 
@@ -536,10 +580,10 @@ ${audit.executiveSummary}
 
 ### B. Greenhouse Gas (GHG) Emissions Accounting (BRSR Table 8.2)
 * **Scope 1 Direct Stationary Emissions (Diesel):** **${audit.statutoryBrsrPrinciple6Table?.ghgEmissions?.scope1DirectDieselTco2e || 3.216} Metric Tons CO₂e** (GHG Protocol 2.68 kg/L)
-* **Scope 2 Indirect Grid Emissions:** **${audit.statutoryBrsrPrinciple6Table?.ghgEmissions?.scope2IndirectGridTco2e || 34.726} Metric Tons CO₂e** (CEA 0.716 kg/kWh)
+* **Scope 2 Indirect Grid Emissions:** **${audit.statutoryBrsrPrinciple6Table?.ghgEmissions?.scope2IndirectGridTco2e || 34.726} Metric Tons CO₂e** (CEA ${audit.facilityProfile?.ceaBaseline || resolvedCea} kg/kWh)
 * **Total Gross Facility Carbon Footprint:** **${audit.statutoryBrsrPrinciple6Table?.ghgEmissions?.totalGrossEmissionsTco2e || 37.942} Metric Tons CO₂e**
-* **Verified Annual Carbon Abatement:** **${audit.statutoryBrsrPrinciple6Table?.ghgEmissions?.annualCarbonAbatedTco2e || 16.32} Metric Tons CO₂e**
-* **Decarbonization Pathway:** ${audit.statutoryBrsrPrinciple6Table?.ghgEmissions?.scope2DecarbonizationPathway || 'CEA Western Regional Grid baseline reduction via sub-minute diurnal solar and off-peak wind synchronization.'}
+* **Verified Annual Carbon Abatement:** **${audit.statutoryBrsrPrinciple6Table?.ghgEmissions?.annualCarbonAbatedTco2e || +(carbonAv * 12).toFixed(2)} Metric Tons CO₂e**
+* **Decarbonization Pathway:** ${audit.statutoryBrsrPrinciple6Table?.ghgEmissions?.scope2DecarbonizationPathway || `CEA ${audit.facilityProfile?.gridZone || resolvedGridZone} baseline reduction via sub-minute diurnal solar and off-peak wind synchronization.`}
 * **Regulatory Compliance:** ${audit.statutoryBrsrPrinciple6Table?.regulatoryAlignment || 'Compliant with SEBI Circular SEBI/HO/CFD/CFD-SEC-2/P/CIR/2023/122 for Top 1000 Listed Entities.'}
 
 ---
@@ -585,8 +629,13 @@ router.all('/audit/html', async (req, res) => {
       facilityType: q.type || b.facilityType || "Commercial Campus",
       discom: q.discom || b.discom || "MSEDCL (Maharashtra)",
       region: q.region || b.region || (q.discom?.includes('BESCOM') ? 'bengaluru' : q.discom?.includes('Tata Power') ? 'delhi' : 'pune'),
+      gridZone: q.gridZone || b.gridZone || (q.discom?.includes('BESCOM') ? 'Southern Grid (IN-SO)' : q.discom?.includes('Tata Power') ? 'Northern Grid (IN-NO)' : 'Western Grid (IN-WE)'),
+      ceaBaseline: Number(q.ceaBaseline || b.ceaBaseline) || (q.discom?.includes('BESCOM') ? 0.690 : q.discom?.includes('Tata Power') ? 0.740 : 0.716),
+      peakPenaltyRate: Number(q.peakPenaltyRate || b.peakPenaltyRate) || (q.discom?.includes('BESCOM') ? 1.25 : q.discom?.includes('Tata Power') ? 1.75 : 1.50),
+      nightRebateRate: Number(q.nightRebateRate || b.nightRebateRate) || (q.discom?.includes('BESCOM') ? 1.00 : q.discom?.includes('Tata Power') ? 1.20 : 1.50),
       loadKva: Number(q.demand || q.loadKva || b.demand || b.contractDemandKva || 500),
       monthlyBill: Number(q.bill || q.monthlyBill || b.monthlyBill || 850000),
+      powerFactor: Number(q.powerFactor || b.powerFactor || 0.98),
       solarKwp: Number(q.solar || q.solarKwp || b.solar || 0),
       bessKwh: Number(q.bess || q.bessKwh || b.bess || 0),
       hasDg: Boolean(q.hasDg === 'true' || b.hasDg),
@@ -594,10 +643,11 @@ router.all('/audit/html', async (req, res) => {
     };
 
     const loadKva = facility.loadKva || 500;
+    const diffRate = (facility.peakPenaltyRate || 1.50) + (facility.nightRebateRate || 1.50);
     const shifted = Number(q.shiftedKwh || b.shiftedLoadKwh || Math.round(loadKva * 0.52));
-    const monthlySav = Number(q.monthlySavings || b.monthlySavingsInr || Math.round(shifted * 30 * 3.0));
+    const monthlySav = Number(q.monthlySavings || b.monthlySavingsInr || Math.round(shifted * 30 * diffRate));
     const annualSav = Number(q.annualSavings || b.annualSavingsInr || monthlySav * 12);
-    const carbonAv = Number(q.carbonAvoided || b.carbonAbatedTons || +((shifted * 30 * 0.716) / 1000).toFixed(2));
+    const carbonAv = Number(q.carbonAvoided || b.carbonAbatedTons || +((shifted * 30 * (facility.ceaBaseline || 0.716)) / 1000).toFixed(2));
 
     const savings = b.savings || {
       monthlySavingsInr: monthlySav,
@@ -632,7 +682,7 @@ router.all('/audit/html', async (req, res) => {
     const reShare = audit.statutoryBrsrPrinciple6Table?.energyConsumption?.renewableEnergySharePercent || (facility.solarKwp > 0 ? Math.min(85, Math.round(((facility.solarKwp * 125) / (totalGridMwh * 1000)) * 100)) : 18.5);
 
     const scope1Diesel = audit.statutoryBrsrPrinciple6Table?.ghgEmissions?.scope1DirectDieselTco2e || (facility.hasDg ? +(loadKva * 2.4 * 0.00268).toFixed(2) : 0);
-    const scope2Grid = audit.statutoryBrsrPrinciple6Table?.ghgEmissions?.scope2IndirectGridTco2e || +(totalGridMwh * 0.716).toFixed(2);
+    const scope2Grid = audit.statutoryBrsrPrinciple6Table?.ghgEmissions?.scope2IndirectGridTco2e || +(totalGridMwh * (facility.ceaBaseline || 0.716)).toFixed(2);
     const totalGross = audit.statutoryBrsrPrinciple6Table?.ghgEmissions?.totalGrossEmissionsTco2e || +(scope1Diesel + scope2Grid).toFixed(2);
     const annualCarbon = audit.statutoryBrsrPrinciple6Table?.ghgEmissions?.annualCarbonAbatedTco2e || +(carbonAv * 12).toFixed(2);
 
@@ -959,7 +1009,7 @@ router.all('/audit/html', async (req, res) => {
       </div>
       <div class="badge-certified">
         <div>✓ SEBI BRSR Principle 6 Certified</div>
-        <div style="font-size: 9px; opacity: 0.8; font-weight: normal;">Govt of India CEA 0.716 kg/kWh Standard</div>
+        <div style="font-size: 9px; opacity: 0.8; font-weight: normal;">Govt of India CEA ${facility.ceaBaseline || 0.716} kg/kWh Standard</div>
       </div>
     </div>
 
@@ -983,13 +1033,13 @@ router.all('/audit/html', async (req, res) => {
             <td>${audit.facilityProfile?.discom || facility.discom}</td>
             <td>${audit.facilityProfile?.tariffCategory || 'HT-I Commercial (Express Feeder)'}</td>
             <td><strong>${audit.facilityProfile?.contractDemandKva || facility.loadKva || 500} kVA</strong></td>
-            <td>0.716 kg CO₂/kWh (Western Grid IN-WE)</td>
+            <td>${facility.ceaBaseline || 0.716} kg CO₂/kWh (${facility.gridZone || 'Regional Grid'})</td>
           </tr>
         </tbody>
       </table>
 
       <div class="reasoning-box">
-        <strong>Root-Cause Baseline Inefficiency:</strong> Under ${audit.facilityProfile?.discom || 'MSEDCL'} Time-of-Day (TOD) regulation, commercial consumers incur aggressive peak surcharges of <strong>+₹1.50/kWh</strong> during evening peaker hours (18:00–22:00) when the Western grid is forced to fire marginal thermal coal peakers emitting 685 gCO₂/kWh. Historical draw profiles show 29.3% of total consumption occurring during this penalty window.
+        <strong>Root-Cause Baseline Inefficiency:</strong> Under ${audit.facilityProfile?.discom || facility.discom} Time-of-Day (TOD) regulation, commercial consumers incur aggressive peak surcharges of <strong>+₹${(facility.peakPenaltyRate || 1.50).toFixed(2)}/kWh</strong> during evening peaker hours when the ${facility.gridZone || 'regional'} grid is forced to fire marginal thermal coal peakers emitting ${Math.round((facility.ceaBaseline || 0.716) * 1000)} gCO₂/kWh. Historical draw profiles show 29.3% of total consumption occurring during this penalty window.
       </div>
     </div>
 
@@ -1010,7 +1060,7 @@ router.all('/audit/html', async (req, res) => {
         <div class="chart-header">
           <div>
             <div class="chart-title">⚡ Figure 1: 24-Hour Diurnal Load Profile & TOD Arbitrage Curve</div>
-            <div class="chart-sub">Shifting ${shifted} kWh from Zone D peak surcharge (18:00–22:00) into Zone E night rebate (22:00–06:00)</div>
+            <div class="chart-sub">Shifting ${shifted} kWh from Zone D peak surcharge window into Zone E night rebate window</div>
           </div>
           <div class="chart-legend">
             <span style="color:#64748b;">-- Baseline (Unmanaged)</span>
@@ -1025,13 +1075,13 @@ router.all('/audit/html', async (req, res) => {
             </linearGradient>
           </defs>
           <rect x="45.0" y="20" width="170.9" height="185" fill="#ecfdf5" opacity="0.8" />
-          <text x="130.4" y="33" text-anchor="middle" fill="#047857" font-size="8.5" font-weight="600">Zone E: Night Rebate (-₹1.50)</text>
+          <text x="130.4" y="33" text-anchor="middle" fill="#047857" font-size="8.5" font-weight="600">Zone E: Night Rebate (-₹${(facility.nightRebateRate || 1.50).toFixed(2)})</text>
 
           <rect x="386.7" y="20" width="113.9" height="185" fill="#fef3c7" opacity="0.75" />
           <text x="443.7" y="33" text-anchor="middle" fill="#b45309" font-size="8.5" font-weight="600">Zone C: Solar Pre-Cooling</text>
 
           <rect x="557.6" y="20" width="113.9" height="185" fill="#ffe4e6" opacity="0.85" />
-          <text x="614.6" y="33" text-anchor="middle" fill="#be123c" font-size="8.5" font-weight="600">Zone D: Peak Surcharge (+₹1.50)</text>
+          <text x="614.6" y="33" text-anchor="middle" fill="#be123c" font-size="8.5" font-weight="600">Zone D: Peak Surcharge (+₹${(facility.peakPenaltyRate || 1.50).toFixed(2)})</text>
 
           <rect x="671.5" y="20" width="28.5" height="185" fill="#ecfdf5" opacity="0.8" />
 
@@ -1074,7 +1124,7 @@ router.all('/audit/html', async (req, res) => {
         <thead>
           <tr>
             <th>Optimization Vector</th>
-            <th>Governing MSEDCL TOD Window</th>
+            <th>Governing ${audit.facilityProfile?.discom || facility.discom} TOD Window</th>
             <th>Tariff Delta</th>
             <th>Shifted Capacity</th>
             <th>Net Monthly Benefit</th>
@@ -1083,15 +1133,15 @@ router.all('/audit/html', async (req, res) => {
         <tbody>
           <tr>
             <td><strong>Avoided Peak Surcharge</strong></td>
-            <td>Zone D (18:00 – 22:00 IST)</td>
-            <td class="val-danger">+₹1.50 / kWh (Avoided)</td>
+            <td>Zone D Peak Surcharge Window</td>
+            <td class="val-danger">+₹${(facility.peakPenaltyRate || 1.50).toFixed(2)} / kWh (Avoided)</td>
             <td>${shifted} kWh / day</td>
             <td class="val-highlight">₹${(audit.financialArbitrageLedger?.peakSurchargeAvoidedMonthlyInr || peakAvoided).toLocaleString('en-IN')} / mo</td>
           </tr>
           <tr>
             <td><strong>Captured Night Off-Peak Rebate</strong></td>
-            <td>Zone E (22:00 – 06:00 IST)</td>
-            <td class="val-highlight">-₹1.50 / kWh (Rebate)</td>
+            <td>Zone E Night Rebate Window</td>
+            <td class="val-highlight">-₹${(facility.nightRebateRate || 1.50).toFixed(2)} / kWh (Rebate)</td>
             <td>${shifted} kWh / day</td>
             <td class="val-highlight">₹${(audit.financialArbitrageLedger?.nightRebateCapturedMonthlyInr || rebateCaptured).toLocaleString('en-IN')} / mo</td>
           </tr>
@@ -1122,12 +1172,12 @@ router.all('/audit/html', async (req, res) => {
           <div style="background:#fff1f2; border:1px solid #fecdd3; padding:8px 12px; border-radius:6px;">
             <div style="font-size:10px; font-weight:600; color:#be123c; text-transform:uppercase;">Peak Surcharge Avoided</div>
             <div style="font-size:15px; font-weight:700; font-family:monospace; color:#9f1239; margin-top:2px;">₹${peakAvoided.toLocaleString('en-IN')} <span style="font-size:10px; font-weight:normal;">/mo</span></div>
-            <div style="font-size:10px; color:#64748b; margin-top:2px;">${shifted} kWh/day × +₹1.50 peak avoided</div>
+            <div style="font-size:10px; color:#64748b; margin-top:2px;">${shifted} kWh/day × +₹${(facility.peakPenaltyRate || 1.50).toFixed(2)} peak avoided</div>
           </div>
           <div style="background:#ecfdf5; border:1px solid #a7f3d0; padding:8px 12px; border-radius:6px;">
             <div style="font-size:10px; font-weight:600; color:#047857; text-transform:uppercase;">Night Rebate Captured</div>
             <div style="font-size:15px; font-weight:700; font-family:monospace; color:#065f46; margin-top:2px;">₹${rebateCaptured.toLocaleString('en-IN')} <span style="font-size:10px; font-weight:normal;">/mo</span></div>
-            <div style="font-size:10px; color:#64748b; margin-top:2px;">${shifted} kWh/day × -₹1.50 cash rebate</div>
+            <div style="font-size:10px; color:#64748b; margin-top:2px;">${shifted} kWh/day × -₹${(facility.nightRebateRate || 1.50).toFixed(2)} cash rebate</div>
           </div>
           <div style="background:#fffbeb; border:1px solid #fde68a; padding:8px 12px; border-radius:6px;">
             <div style="font-size:10px; font-weight:600; color:#b45309; text-transform:uppercase;">Demand Ratchet Avoidance</div>
@@ -1138,7 +1188,7 @@ router.all('/audit/html', async (req, res) => {
       </div>
 
       <div class="reasoning-box">
-        <strong>Economic Arbitrage Mechanics:</strong> Shifting flexible loads from Zone D to Zone E produces a net financial swing of <strong>₹3.00 per kilowatt-hour</strong> (+₹1.50 penalty avoided + ₹1.50 cash rebate captured). Annualized operational savings equal <strong>₹${(audit.financialArbitrageLedger?.projectedAnnualSavingsInr || 280800).toLocaleString('en-IN')}</strong> with a software ROI recovery period of <strong>${audit.financialArbitrageLedger?.softwarePaybackMonths || 1.4} months</strong> and zero hardware CapEx expenditure.
+        <strong>Economic Arbitrage Mechanics:</strong> Shifting flexible loads from Zone D to Zone E produces a net financial swing of <strong>₹${((facility.peakPenaltyRate || 1.50) + (facility.nightRebateRate || 1.50)).toFixed(2)} per kilowatt-hour</strong> (+₹${(facility.peakPenaltyRate || 1.50).toFixed(2)} penalty avoided + ₹${(facility.nightRebateRate || 1.50).toFixed(2)} cash rebate captured). Annualized operational savings equal <strong>₹${(audit.financialArbitrageLedger?.projectedAnnualSavingsInr || monthlySav * 12).toLocaleString('en-IN')}</strong> with a software ROI recovery period of <strong>${audit.financialArbitrageLedger?.softwarePaybackMonths || 1.4} months</strong> and zero hardware CapEx expenditure.
       </div>
     </div>
 
@@ -1232,7 +1282,7 @@ router.all('/audit/html', async (req, res) => {
         <div class="chart-header">
           <div>
             <div class="chart-title">🌿 Figure 2: Scope 1 & Scope 2 Decarbonization Trajectory (tCO₂e)</div>
-            <div class="chart-sub">Verified against CEA Western Grid (0.716 kg/kWh) & GHG Protocol Corporate Standard</div>
+            <div class="chart-sub">Verified against CEA ${facility.gridZone || 'Regional Grid'} (${facility.ceaBaseline || 0.716} kg/kWh) & GHG Protocol Corporate Standard</div>
           </div>
           <div class="chart-legend">
             <span style="color:#475569;">■ Baseline</span>
@@ -1309,14 +1359,14 @@ router.all('/audit/html', async (req, res) => {
           </tr>
           <tr style="background: #f8fafc; font-weight: 700;">
             <td>ANNUAL VERIFIED ABATEMENT</td>
-            <td colspan="2">India Central Electricity Authority Baseline Factor 0.716 kg/kWh</td>
+            <td colspan="2">India Central Electricity Authority Baseline Factor ${facility.ceaBaseline || 0.716} kg/kWh</td>
             <td class="val-highlight">-${annualCarbon} tCO₂e / yr</td>
           </tr>
         </tbody>
       </table>
 
       <div class="reasoning-box">
-        <strong>Statutory Compliance Justification:</strong> Disclosures formatted in strict accordance with SEBI Master Circular <code>SEBI/HO/CFD/CFD-SEC-2/P/CIR/2023/122</code>. Scope 2 emissions calculations utilize the statutory Indian Central Electricity Authority (CEA) Baseline Database for the Western Regional Grid (0.716 kg CO₂/kWh).
+        <strong>Statutory Compliance Justification:</strong> Disclosures formatted in strict accordance with SEBI Master Circular <code>SEBI/HO/CFD/CFD-SEC-2/P/CIR/2023/122</code>. Scope 2 emissions calculations utilize the statutory Indian Central Electricity Authority (CEA) Baseline Database for the ${facility.gridZone || 'Regional Grid'} (${facility.ceaBaseline || 0.716} kg CO₂/kWh).
       </div>
     </div>
 
@@ -1466,7 +1516,7 @@ router.get('/status/ai', (req, res) => {
   const configured = isGeminiConfigured();
   res.json({
     geminiApiKeyConfigured: configured,
-    model: process.env.GEMINI_MODEL || 'gemini-3.8-flash',
+    model: process.env.GEMINI_MODEL || 'gemini-3.7-flash',
     featuresAvailable: {
       multimodalBillOcr: configured ? "Live (Gemini Multimodal API)" : "Demo Mode / Fallback Active",
       brsrReportGenerator: configured ? "Live (Gemini Text API)" : "Benchmark Standard Active",
