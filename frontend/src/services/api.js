@@ -120,6 +120,16 @@ export async function uploadBill(file = null, useDemo = false) {
 }
 
 /**
+ * 5.1 PRESET UTILITY BILL ANALYSIS (GEMINI 2.5 FLASH)
+ * Invokes Google Gemini to synthesize ToD breakdown, demand penalties, and forensic audit observations for preset bills.
+ * @param {Object} presetData - Preset metadata (discom, demand, billAmount, units, etc.)
+ */
+export async function analyzePresetBill(presetData) {
+  const response = await client.post(`/bills/analyze-preset`, presetData);
+  return response.data;
+}
+
+/**
  * 6. SEBI BRSR PRINCIPLE 6 AUDIT REPORT & WORK ORDERS
  * Calls Gemini 3.8 Flash to synthesize statutory SEBI BRSR Core disclosures,
  * physical avoided emissions, and actionable autonomous engineering work orders.
@@ -136,9 +146,15 @@ export async function generateBrsrAudit(params = {}) {
       name: params.facilityName || params.facility?.name || 'Commercial Facility',
       facilityType: params.facilityType || params.facility?.facilityType || 'Commercial Campus',
       discom: params.discom || params.facility?.discom || 'MSEDCL (Maharashtra)',
-      region: params.region || params.facility?.region || 'Maharashtra',
+      region: params.location || params.region || params.facility?.region || 'Maharashtra',
+      location: params.location || params.region || params.facility?.location || 'Maharashtra',
+      gridZone: params.gridZone || params.facility?.gridZone,
+      ceaBaseline: Number(params.ceaBaselineKgPerKwh || params.ceaBaseline || params.facility?.ceaBaselineKgPerKwh || params.facility?.ceaBaseline),
+      peakPenaltyRate: Number(params.peakPenaltyRate || params.facility?.peakPenaltyRate),
+      nightRebateRate: Number(params.nightRebateRate || params.facility?.nightRebateRate),
       loadKva: Number(params.demand || params.contractDemandKva || params.facility?.loadKva || 500),
       monthlyBill: Number(params.monthlyBill || params.billAmount || params.facility?.monthlyBill || 850000),
+      powerFactor: Number(params.powerFactor || params.facility?.powerFactor || 0.98),
       solarKwp: Number(params.solar || params.solarKwp || params.facility?.solarKwp || 0),
       bessKwh: Number(params.bess || params.bessKwh || params.facility?.bessKwh || 0),
       hasDg: Boolean(params.hasDg || params.facility?.hasDg),
@@ -153,8 +169,16 @@ export async function generateBrsrAudit(params = {}) {
     // Top-level fallbacks for flexible endpoint parsing
     facilityName: params.facilityName || 'Commercial Facility',
     discom: params.discom || 'MSEDCL (Maharashtra)',
+    region: params.location || params.region || 'Maharashtra',
+    location: params.location || params.region || 'Maharashtra',
+    gridZone: params.gridZone,
+    ceaBaselineKgPerKwh: Number(params.ceaBaselineKgPerKwh || params.ceaBaseline),
+    ceaBaseline: Number(params.ceaBaselineKgPerKwh || params.ceaBaseline),
+    peakPenaltyRate: Number(params.peakPenaltyRate),
+    nightRebateRate: Number(params.nightRebateRate),
     demand: Number(params.demand || 500),
     monthlyBill: Number(params.monthlyBill || 850000),
+    powerFactor: Number(params.powerFactor || 0.98),
     solar: Number(params.solar || 0),
     bess: Number(params.bess || 0),
     equipment: params.equipment || ['hvac', 'inverter'],
@@ -215,6 +239,7 @@ export default {
   optimizeLoadShift,
   calculateEmissions,
   uploadBill,
+  analyzePresetBill,
   generateBrsrAudit,
   getFacilityEquipment,
   synthesizeEquipment,

@@ -1,9 +1,7 @@
-import React, { useState } from 'react';
-import { Check, X, AlertCircle, ShieldCheck, Zap, DollarSign, Clock, Cpu } from 'lucide-react';
+import React from 'react';
+import { Check, X, AlertCircle, ShieldCheck, Zap, Cpu } from 'lucide-react';
 
 export default function CompetitionSection() {
-  const [activeTab, setActiveTab] = useState('matrix');
-
   const competitors = [
     {
       name: 'Legacy BMS Systems',
@@ -79,10 +77,10 @@ export default function CompetitionSection() {
   return (
     <section id="comparison" className="relative z-10 py-20 border-t border-slate-900/[0.06]">
       {/* Header */}
-      <div className="max-w-4xl mx-auto text-center mb-16">
+      <div className="max-w-4xl mx-auto text-center mb-12">
         <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-700 text-xs font-mono tracking-wider uppercase font-semibold mb-4">
           <ShieldCheck className="w-3.5 h-3.5" />
-          Honest Architectural & Pricing Comparison
+          Honest Architectural Comparison
         </div>
         <h2 className="text-3xl md:text-4xl font-light tracking-tight text-slate-900">
           How <span className="font-semibold text-slate-900">WattHacks AI</span> Compares to the Market
@@ -90,35 +88,10 @@ export default function CompetitionSection() {
         <p className="mt-4 text-slate-600 font-light text-base md:text-lg max-w-2xl mx-auto">
           We believe in complete transparency. Here is an honest, technical breakdown of where legacy industrial platforms excel, and where our autonomous software changes the economics.
         </p>
-
-        {/* Tab toggle */}
-        <div className="flex items-center justify-center gap-3 mt-8">
-          <button
-            onClick={() => setActiveTab('matrix')}
-            className={`px-5 py-2 rounded-full text-xs font-mono tracking-wide transition-all ${
-              activeTab === 'matrix'
-                ? 'bg-slate-900 text-white shadow-sm'
-                : 'bg-white/80 text-slate-600 border border-slate-200 hover:bg-white'
-            }`}
-          >
-            Detailed Feature Matrix
-          </button>
-          <button
-            onClick={() => setActiveTab('pricing')}
-            className={`px-5 py-2 rounded-full text-xs font-mono tracking-wide transition-all ${
-              activeTab === 'pricing'
-                ? 'bg-slate-900 text-white shadow-sm'
-                : 'bg-white/80 text-slate-600 border border-slate-200 hover:bg-white'
-            }`}
-          >
-            Transparent Pricing Tiers
-          </button>
-        </div>
       </div>
 
-      {activeTab === 'matrix' ? (
-        /* Detailed Comparative Table */
-        <div className="liquid-glass rounded-3xl p-6 md:p-8 overflow-x-auto shadow-xl border border-white/80">
+      {/* Detailed Comparative Table */}
+      <div className="liquid-glass rounded-3xl p-6 md:p-8 overflow-x-auto shadow-xl border border-white/80">
           <table className="w-full text-left text-xs md:text-sm">
             <thead>
               <tr className="border-b border-slate-900/10">
@@ -249,135 +222,6 @@ export default function CompetitionSection() {
             </div>
           </div>
         </div>
-      ) : (
-        /* Transparent Pricing Cards */
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-          {/* Tier 1: Free Audit */}
-          <div className="glass-card rounded-3xl p-8 flex flex-col justify-between hover:shadow-xl transition-all">
-            <div>
-              <div className="inline-block px-3 py-1 rounded-full bg-slate-100 text-slate-700 text-[11px] font-mono font-semibold uppercase mb-4">
-                Community / Free
-              </div>
-              <h3 className="text-xl font-semibold text-slate-900">Facility Tariff Audit</h3>
-              <p className="text-xs text-slate-500 mt-2 font-light">
-                For commercial building owners evaluating solar, battery storage, and peak surcharge risks.
-              </p>
-              <div className="mt-6 flex items-baseline gap-1">
-                <span className="text-4xl font-light text-slate-900">₹0</span>
-                <span className="text-xs text-slate-400 font-mono">/ Forever</span>
-              </div>
-              <ul className="mt-6 space-y-3 text-xs text-slate-600 font-light">
-                <li className="flex items-center gap-2">
-                  <Check className="w-4 h-4 text-emerald-500" /> Historical electricity bill tariff audit
-                </li>
-                <li className="flex items-center gap-2">
-                  <Check className="w-4 h-4 text-emerald-500" /> Optimal Solar PV & BESS sizing report
-                </li>
-                <li className="flex items-center gap-2">
-                  <Check className="w-4 h-4 text-emerald-500" /> India CEA 0.716 carbon benchmark baseline
-                </li>
-                <li className="flex items-center gap-2 text-slate-400">
-                  <X className="w-4 h-4 text-slate-300" /> Autonomous live inverter dispatch
-                </li>
-              </ul>
-            </div>
-            <a
-              href="#try-it-out"
-              className="mt-8 block text-center py-2.5 rounded-full border border-slate-900 text-slate-900 text-xs font-semibold hover:bg-slate-900 hover:text-white transition-all"
-            >
-              Run Free Audit
-            </a>
-          </div>
-
-          {/* Tier 2: Commercial Pro (Highlight) */}
-          <div className="liquid-glass rounded-3xl p-8 flex flex-col justify-between relative shadow-2xl border-2 border-emerald-500/30 transform md:-translate-y-2">
-            <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 px-4 py-1 rounded-full bg-emerald-500 text-white text-[10px] font-mono tracking-wider font-semibold uppercase shadow-md">
-              Most Popular • 3.4x Average ROI
-            </div>
-            <div>
-              <div className="inline-block px-3 py-1 rounded-full bg-emerald-50 text-emerald-800 text-[11px] font-mono font-semibold uppercase mb-4">
-                Commercial Pro
-              </div>
-              <h3 className="text-xl font-semibold text-slate-900">Autonomous Facility Node</h3>
-              <p className="text-xs text-slate-500 mt-2 font-light">
-                Full autonomous closed-loop tariff arbitrage for commercial offices, warehouses, and factories.
-              </p>
-              <div className="mt-6 flex items-baseline gap-1">
-                <span className="text-3xl sm:text-4xl font-semibold text-slate-900">Currently Free</span>
-                <span className="text-xs text-slate-400 font-mono">/ Beta Access</span>
-              </div>
-              <div className="text-[11px] text-emerald-600 font-mono mt-1">(Standard ₹14,999/mo waived • 100% Free)</div>
-
-              <ul className="mt-6 space-y-3 text-xs text-slate-700">
-                <li className="flex items-center gap-2">
-                  <Check className="w-4 h-4 text-emerald-600" /> <strong className="font-semibold">Autonomous ToD Tariff Arbitrage</strong> (DISCOM aligned)
-                </li>
-                <li className="flex items-center gap-2">
-                  <Check className="w-4 h-4 text-emerald-600" /> Live Sub-Minute Solar & Battery Inverter Control
-                </li>
-                <li className="flex items-center gap-2">
-                  <Check className="w-4 h-4 text-emerald-600" /> Dynamic Peak Demand Shaving (Avoid Ratchets)
-                </li>
-                <li className="flex items-center gap-2">
-                  <Check className="w-4 h-4 text-emerald-600" /> Real-Time Grid CEA Carbon Intensity Tracking
-                </li>
-                <li className="flex items-center gap-2">
-                  <Check className="w-4 h-4 text-emerald-600" /> SEBI BRSR Core & Scope 2 Compliance Export
-                </li>
-                <li className="flex items-center gap-2">
-                  <Check className="w-4 h-4 text-emerald-600" /> Modbus TCP, BACnet IP, and Inverter Cloud APIs
-                </li>
-              </ul>
-            </div>
-            <a
-              href="#try-it-out"
-              className="mt-8 block text-center py-3 rounded-full bg-slate-900 text-white text-xs font-semibold hover:bg-slate-800 transition-all shadow-lg active:scale-95"
-            >
-              Start 30-Day Benchmark &rarr;
-            </a>
-          </div>
-
-          {/* Tier 3: Enterprise Fleet */}
-          <div className="glass-card rounded-3xl p-8 flex flex-col justify-between hover:shadow-xl transition-all">
-            <div>
-              <div className="inline-block px-3 py-1 rounded-full bg-slate-100 text-slate-700 text-[11px] font-mono font-semibold uppercase mb-4">
-                Enterprise Fleet
-              </div>
-              <h3 className="text-xl font-semibold text-slate-900">Multi-Site Campus Grid</h3>
-              <p className="text-xs text-slate-500 mt-2 font-light">
-                For corporate real estate portfolios, multi-factory conglomerates, and microgrid operators.
-              </p>
-              <div className="mt-6 flex items-baseline gap-1">
-                <span className="text-4xl font-light text-slate-900">₹39,999</span>
-                <span className="text-xs text-slate-400 font-mono">/ mo base</span>
-              </div>
-              <ul className="mt-6 space-y-3 text-xs text-slate-600 font-light">
-                <li className="flex items-center gap-2">
-                  <Check className="w-4 h-4 text-emerald-500" /> Everything in Commercial Pro
-                </li>
-                <li className="flex items-center gap-2">
-                  <Check className="w-4 h-4 text-emerald-500" /> Multi-site fleet aggregation & virtual microgrid
-                </li>
-                <li className="flex items-center gap-2">
-                  <Check className="w-4 h-4 text-emerald-500" /> Custom on-prem edge controller containers
-                </li>
-                <li className="flex items-center gap-2">
-                  <Check className="w-4 h-4 text-emerald-500" /> 99.99% SLA & Dedicated Energy Engineer
-                </li>
-                <li className="flex items-center gap-2">
-                  <Check className="w-4 h-4 text-emerald-500" /> Guaranteed Demand Charge Reduction SLA
-                </li>
-              </ul>
-            </div>
-            <a
-              href="#try-it-out"
-              className="mt-8 block text-center py-2.5 rounded-full border border-slate-900 text-slate-900 text-xs font-semibold hover:bg-slate-900 hover:text-white transition-all"
-            >
-              Contact Solutions Engineering
-            </a>
-          </div>
-        </div>
-      )}
-    </section>
-  );
-}
+      </section>
+    );
+  }

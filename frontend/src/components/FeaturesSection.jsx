@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   Zap, 
   Leaf, 
@@ -16,6 +16,8 @@ import {
 
 export default function FeaturesSection() {
   const [selectedFeature, setSelectedFeature] = useState(0);
+  const [timerDuration, setTimerDuration] = useState(3000); // 3 sec default, 7 sec on click
+  const [progressKey, setProgressKey] = useState(0);
 
   const features = [
     {
@@ -142,6 +144,23 @@ daemon.on('CLOUD_HEARTBEAT_TIMEOUT', () => {
     }
   ];
 
+  // Auto-cycle timer: 3s normally, 7s after user click
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setSelectedFeature((prev) => (prev + 1) % features.length);
+      setTimerDuration(3000); // Reset back to default 3s for subsequent auto-cycles
+      setProgressKey((prev) => prev + 1);
+    }, timerDuration);
+
+    return () => clearTimeout(timer);
+  }, [selectedFeature, timerDuration, features.length]);
+
+  const handleSelectFeature = (idx) => {
+    setSelectedFeature(idx);
+    setTimerDuration(7000); // 7-second reading window on user interaction
+    setProgressKey((prev) => prev + 1);
+  };
+
   return (
     <section id="features" className="relative z-10 py-24 border-t border-slate-900/[0.06]">
       {/* Section Header */}
@@ -168,13 +187,24 @@ daemon.on('CLOUD_HEARTBEAT_TIMEOUT', () => {
             return (
               <div
                 key={f.id}
-                onClick={() => setSelectedFeature(idx)}
-                className={`p-5 rounded-2xl cursor-pointer transition-all duration-300 border text-left ${
+                onClick={() => handleSelectFeature(idx)}
+                className={`p-5 rounded-2xl cursor-pointer transition-all duration-300 border text-left relative overflow-hidden ${
                   isSelected
                     ? 'liquid-glass shadow-lg border-emerald-500/40 bg-white/90 scale-[1.01]'
                     : 'bg-white/40 hover:bg-white/70 border-slate-900/[0.06] hover:border-slate-900/15'
                 }`}
               >
+                {/* Active auto-cycle timer progress bar */}
+                {isSelected && (
+                  <div
+                    key={progressKey}
+                    className="absolute bottom-0 left-0 h-[2.5px] bg-emerald-500 rounded-full"
+                    style={{
+                      animation: `featureProgress ${timerDuration}ms linear forwards`
+                    }}
+                  />
+                )}
+
                 <div className="flex items-start gap-4">
                   <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 transition-colors ${
                     isSelected ? 'bg-emerald-500 text-white shadow-md' : 'bg-slate-100 text-slate-700'
@@ -187,7 +217,10 @@ daemon.on('CLOUD_HEARTBEAT_TIMEOUT', () => {
                         {f.tag}
                       </span>
                       {isSelected && (
-                        <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                        <span className="flex items-center gap-1 text-[10px] font-mono text-emerald-700 bg-emerald-500/10 px-1.5 py-0.5 rounded">
+                          <Clock className="w-3 h-3 text-emerald-600 animate-spin" style={{ animationDuration: '4s' }} />
+                          {timerDuration === 7000 ? '7s' : '3s'}
+                        </span>
                       )}
                     </div>
                     <h3 className={`text-sm font-semibold mt-0.5 truncate ${isSelected ? 'text-slate-900' : 'text-slate-700'}`}>
@@ -220,9 +253,11 @@ daemon.on('CLOUD_HEARTBEAT_TIMEOUT', () => {
                   </h3>
                 </div>
               </div>
-              <span className="px-3 py-1 rounded-full bg-slate-100 text-slate-600 font-mono text-xs">
-                MODULE 0{selectedFeature + 1} / 06
-              </span>
+              <div className="flex items-center gap-2">
+                <span className="px-3 py-1 rounded-full bg-slate-100 text-slate-600 font-mono text-xs">
+                  MODULE 0{selectedFeature + 1} / 06
+                </span>
+              </div>
             </div>
 
             {/* Deep Description */}

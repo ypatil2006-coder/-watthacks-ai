@@ -3,7 +3,7 @@
 > **Directory:** `/home/yash/Projects/Hackathon/BACKEND_IMPLEMENTATION_PLAN.md`  
 > **Theme:** AI for Sustainability (Scenario-Based Challenge)  
 > **Target:** MSEDCL Time-of-Day (TOD) Arbitrage & Western Grid (`IN-WE`) Carbon Optimization  
-> **Stack:** Node.js, Express, Google Gemini 1.5 Multimodal API, Zod, Multer, JWT  
+> **Stack:** Node.js, Express, Google Gemini 3.7 Flash Multimodal API, Zod, Multer, JWT  
 > **Engineer / Agent Environment:** Claude Code (Strict Zero-Hallucination Policy)
 
 ---
@@ -19,7 +19,7 @@
    Do NOT return static JSON blobs like `"monthlySavingsInr": 48250` or `"shiftedLoadKwh": 450`. The backend must take actual user/sensor inputs (or live facility load vectors) and calculate savings through the mathematical MSEDCL TOD differential formula:
    $$\Delta \text{Savings (₹)} = (\text{Shifted kWh} \times \text{Peak Penalty Surcharge}) + (\text{Shifted kWh} \times |\text{Night Rebate}|)$$
 2. **Zero Pre-Filled Gemini OCR Outputs:**  
-   The bill ingestion pipeline must process the uploaded raw document buffer (PDF / image) through the Gemini 1.5 API in real time. If the file is unreadable, malformed, or missing, the API must return a true `422 Unprocessable Entity` or `400 Bad Request` with an exact error message—**never substitute a fake pre-filled bill dataset**.
+   The bill ingestion pipeline must process the uploaded raw document buffer (PDF / image) through the Gemini 3.7 Flash API in real time. If the file is unreadable, malformed, or missing, the API must return a true `422 Unprocessable Entity` or `400 Bad Request` with an exact error message—**never substitute a fake pre-filled bill dataset**.
 3. **Dynamic Regional Grid Telemetry:**  
    Grid carbon intensity must be computed based on the exact real-time clock timestamp (`new Date().getHours()`), fluctuating according to diurnal solar, wind, and thermal dispatch cycles against the India CEA **0.716 kg CO₂/kWh** baseline.
 4. **Calculated Scope 1 & 2 Emissions:**  
@@ -34,7 +34,7 @@
 The WattHacks backend engine solves the operational and financial challenges of commercial facilities in Pune/Maharashtra:
 1. **Dynamic Tariff Arbitrage:** Ingests MSEDCL HT-I Time-of-Day (TOD) schedules (+₹1.50 peak surcharge vs. -₹1.50 night rebate) to shift flexible commercial loads.
 2. **Real-Time Grid Carbon Accounting:** Tracks Western Regional Grid (`IN-WE`) emission factors against the official India Central Electricity Authority (CEA) **0.716 kg CO₂/kWh** baseline.
-3. **Multimodal Document Intelligence:** Uses Google Gemini 1.5 to parse unstructured MSEDCL electricity bills and diesel backup generator logs into structured, audit-ready data.
+3. **Multimodal Document Intelligence:** Uses Google Gemini 3.7 Flash to parse unstructured MSEDCL electricity bills and diesel backup generator logs into structured, audit-ready data.
 4. **Regulatory Reporting:** Formulates SEBI BRSR (Business Responsibility and Sustainability Reporting) Principle 6 compliant greenhouse gas audit metrics.
 
 ---

@@ -34,7 +34,7 @@ Commercial real estate, tech campuses, and industrial facilities in Maharashtra 
 * **⚡ Real-Time Tariff & Carbon Arbitrage:**  
   WattHacks correlates live Western Grid (`IN-WE`) carbon intensity with MSEDCL Time-of-Day pricing tariffs. It calculates the optimal schedule to shift flexible commercial loads away from dirty evening peaks (+₹1.50/unit) into clean night rebate windows (-₹1.50/unit), saving commercial campuses **₹45,000 to ₹1,50,000+ every month** while slashing grid carbon by up to **35%**.
 
-* **📄 Zero-Data-Entry Multimodal Bill OCR (Gemini 1.5):**  
+* **📄 Zero-Data-Entry Multimodal Bill OCR (Gemini 3.7 Flash):**  
   Facility managers drag and drop complex MSEDCL electricity bill PDFs or diesel generator fuel logs. The Google Gemini Multimodal Vision API extracts consumption line items, TOD slot splits (Zone 1 through 4), billed demand, and power factor with zero manual data entry.
 
 * **🌿 Scope 1 & 2 Emissions Accounting:**  
@@ -70,9 +70,9 @@ Commercial real estate, tech campuses, and industrial facilities in Maharashtra 
      └─────────────┬────────────────────────────┬─────────────┘
                    │                            │
                    ▼                            ▼
-      [ Google Gemini 1.5 API ]     [ Grid Telemetry Service ]
-       Multimodal Bill Vision OCR    Western Regional Grid (IN-WE)
-       & Unstructured Document AI    Real-time Carbon Telemetry
+      [ Google Gemini 3.7 Flash API ] [ Grid Telemetry Service ]
+        Multimodal Bill Vision OCR    Western Regional Grid (IN-WE)
+        & Unstructured Document AI    Real-time Carbon Telemetry
 ```
 
 ---

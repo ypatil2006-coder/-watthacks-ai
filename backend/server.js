@@ -63,15 +63,17 @@ app.use((err, req, res, next) => {
 });
 
 // Start Server
-app.listen(PORT, () => {
-  const geminiReady = isGeminiConfigured();
-  console.log('====================================================');
-  console.log(`⚡ WattHacks AI Backend Server Running on Port ${PORT}`);
-  console.log(`📍 Regional Target: Pune, Maharashtra (MSEDCL TOD Tariff Schedule)`);
-  console.log(`🌿 Carbon Engine: Govt of India CEA Baseline (0.716 kg CO2/kWh)`);
-  console.log(`🤖 Google Gemini 1.5/2.5 API: ${geminiReady ? '✅ CONFIGURED (Live Multimodal OCR Enabled)' : '⚠️ NOT CONFIGURED (Set GEMINI_API_KEY in backend/.env)'}`);
-  console.log(`📖 API Catalog & Route Explorer: http://localhost:${PORT}/api`);
-  console.log('====================================================');
-});
+if (process.env.VERCEL !== '1') {
+  app.listen(PORT, () => {
+    const geminiReady = isGeminiConfigured();
+    console.log('====================================================');
+    console.log(`⚡ WattHacks AI Backend Server Running on Port ${PORT}`);
+    console.log(`📍 Regional Target: Pune, Maharashtra (MSEDCL TOD Tariff Schedule)`);
+    console.log(`🌿 Carbon Engine: Govt of India CEA Baseline (0.716 kg CO2/kWh)`);
+    console.log(`🤖 Google Gemini 1.5/2.5 API: ${geminiReady ? '✅ CONFIGURED (Live Multimodal OCR Enabled)' : '⚠️ NOT CONFIGURED (Set GEMINI_API_KEY in backend/.env)'}`);
+    console.log(`📖 API Catalog & Route Explorer: http://localhost:${PORT}/api`);
+    console.log('====================================================');
+  });
+}
 
 export default app;

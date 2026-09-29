@@ -26,22 +26,22 @@ export default function WaveBackground() {
     };
     window.addEventListener('mousemove', handleMouseMove);
 
-    // 5 aggressive, heighted wave surges with crisp crest strokes
+    // Calibrated wave surges: 25% less aggressive amplitude and 20% smoother speed
     const waves = [
-      { amplitude: 140, frequency: 0.0016, speed: 0.020, colorStart: 'rgba(52, 211, 153, 0.22)', strokeColor: 'rgba(52, 211, 153, 0.60)', strokeWidth: 2.5, baseY: 0.44, phase: 0 },
-      { amplitude: 175, frequency: 0.0011, speed: 0.015, colorStart: 'rgba(16, 185, 129, 0.25)', strokeColor: 'rgba(16, 185, 129, 0.65)', strokeWidth: 2.8, baseY: 0.52, phase: 2.2 },
-      { amplitude: 115, frequency: 0.0022, speed: 0.024, colorStart: 'rgba(110, 231, 183, 0.20)', strokeColor: 'rgba(110, 231, 183, 0.55)', strokeWidth: 2.0, baseY: 0.60, phase: 4.1 },
-      { amplitude: 95, frequency: 0.0028, speed: 0.028, colorStart: 'rgba(5, 150, 105, 0.26)', strokeColor: 'rgba(52, 211, 153, 0.70)', strokeWidth: 2.2, baseY: 0.68, phase: 1.4 },
-      { amplitude: 130, frequency: 0.0014, speed: 0.016, colorStart: 'rgba(251, 146, 60, 0.12)', strokeColor: 'rgba(251, 146, 60, 0.45)', strokeWidth: 1.8, baseY: 0.74, phase: 3.1 }
+      { amplitude: 105, frequency: 0.0016, speed: 0.016, colorStart: 'rgba(52, 211, 153, 0.18)', strokeColor: 'rgba(52, 211, 153, 0.48)', strokeWidth: 2.0, baseY: 0.46, phase: 0 },
+      { amplitude: 130, frequency: 0.0011, speed: 0.012, colorStart: 'rgba(16, 185, 129, 0.20)', strokeColor: 'rgba(16, 185, 129, 0.50)', strokeWidth: 2.2, baseY: 0.54, phase: 2.2 },
+      { amplitude: 86, frequency: 0.0022, speed: 0.019, colorStart: 'rgba(110, 231, 183, 0.16)', strokeColor: 'rgba(110, 231, 183, 0.42)', strokeWidth: 1.6, baseY: 0.62, phase: 4.1 },
+      { amplitude: 71, frequency: 0.0028, speed: 0.022, colorStart: 'rgba(5, 150, 105, 0.20)', strokeColor: 'rgba(52, 211, 153, 0.52)', strokeWidth: 1.8, baseY: 0.70, phase: 1.4 },
+      { amplitude: 98, frequency: 0.0014, speed: 0.013, colorStart: 'rgba(251, 146, 60, 0.10)', strokeColor: 'rgba(251, 146, 60, 0.35)', strokeWidth: 1.4, baseY: 0.76, phase: 3.1 }
     ];
 
-    const particles = Array.from({ length: 35 }, () => ({
+    const particles = Array.from({ length: 30 }, () => ({
       x: Math.random() * width,
       y: Math.random() * height,
-      radius: Math.random() * 1.8 + 0.8,
-      speedY: Math.random() * 0.25 + 0.1,
-      speedX: (Math.random() - 0.5) * 0.2,
-      alpha: Math.random() * 0.5 + 0.2,
+      radius: Math.random() * 1.6 + 0.6,
+      speedY: Math.random() * 0.20 + 0.08,
+      speedX: (Math.random() - 0.5) * 0.16,
+      alpha: Math.random() * 0.4 + 0.15,
       pulse: Math.random() * Math.PI * 2
     }));
 
@@ -55,7 +55,7 @@ export default function WaveBackground() {
 
         for (let x = 0; x <= width; x += 4) {
           const distanceToMouse = Math.abs(x - mouse.x);
-          const mouseInfluence = Math.max(0, 1 - distanceToMouse / 600) * 18;
+          const mouseInfluence = Math.max(0, 1 - distanceToMouse / 600) * 13.5;
           const y = yAnchor 
             + Math.sin(x * wave.frequency + time * wave.speed + wave.phase) * (wave.amplitude + mouseInfluence)
             + Math.cos(x * wave.frequency * 0.6 + time * wave.speed * 0.8) * (wave.amplitude * 0.3);

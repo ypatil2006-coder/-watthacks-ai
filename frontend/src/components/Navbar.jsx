@@ -103,8 +103,8 @@ export default function Navbar({ currentPage = 'landing', onNavigate }) {
   };
 
   return (
-    <div className="sticky top-6 z-40 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-12">
-      <header className="navbar-liquid-glass relative rounded-full px-6 sm:px-8 py-3.5 flex items-center justify-between overflow-hidden shadow-2xl transition-all duration-300">
+    <div className="fixed top-4 sm:top-6 left-0 right-0 z-50 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-12 pointer-events-none">
+      <header className="navbar-liquid-glass relative rounded-full px-6 sm:px-8 py-3.5 flex items-center justify-between overflow-hidden shadow-2xl transition-all duration-300 pointer-events-auto">
         <canvas
           ref={canvasRef}
           className="absolute inset-0 w-full h-full rounded-full pointer-events-none z-[1] opacity-90"
@@ -227,7 +227,7 @@ export default function Navbar({ currentPage = 'landing', onNavigate }) {
                 onClick={() => handleNavClick('bill-audit')}
                 className="px-4 sm:px-5 py-2 rounded-full border border-slate-900 bg-slate-900 hover:bg-slate-800 text-white transition-all duration-300 text-xs font-semibold tracking-wider shadow-sm active:scale-95 cursor-pointer flex items-center gap-1.5"
               >
-                <span>Upload Bill ↑</span>
+                <span>Try It Out →</span>
               </button>
             )}
 
