@@ -4,7 +4,7 @@
 > **Team:** wallHacks · **Regional Target:** Pune & Western Grid (IN-WE) · **Tariff Benchmark:** MSEDCL HT-I Commercial Schedule  
 > **Carbon Standard:** Govt. of India Central Electricity Authority (CEA) Baseline (0.716 kg CO₂/kWh)  
 
-[![Deployment Status](https://img.shields.io/badge/Vercel-Deployed-black?logo=vercel&style=flat-square)](https://vercel.com)
+[![Deployment Status](https://img.shields.io/badge/Vercel-Live%20Production-10B981?logo=vercel&style=flat-square)](https://-watthacks-ai.vercel.app)
 [![AI Engine](https://img.shields.io/badge/AI%20Core-Google%20Gemini%20Multimodal-4285F4?logo=google&style=flat-square)](https://aistudio.google.com)
 [![Frontend Stack](https://img.shields.io/badge/Frontend-React%2018%20%7C%20Vite%20%7C%20Tailwind%20CSS-06B6D4?style=flat-square)](https://vitejs.dev)
 [![Backend Stack](https://img.shields.io/badge/Backend-Node.js%20%7C%20Express%20%7C%20Zod-339933?style=flat-square)](https://nodejs.org)
@@ -13,25 +13,34 @@
 
 ---
 
+## 🏆 Official Hackathon Submission Information
+
+* **🌐 Live Deployed Application:** [https://-watthacks-ai.vercel.app](https://-watthacks-ai.vercel.app)
+* **🐙 Public GitHub Repository:** [https://github.com/ypatil2006-coder/-watthacks-ai](https://github.com/ypatil2006-coder/-watthacks-ai)
+* **🎥 3-Minute Video Demo (Google Drive):** **[Watch Demo Video on Google Drive](#)** *(Replace `#` with your Google Drive Link)*
+* **📁 Scenario-Based Challenge:** AI for Sustainability (Responsible Resource Utilization, Operational Efficiency, and Data-Driven Grid Decarbonization)
+
+---
+
 ## 📑 Table of Contents
 1. [Problem Statement](#-1-problem-statement)
-2. [Solution Overview](#-2-solution-overview)
+2. [Solution Description & AI Integration](#-2-solution-description--ai-integration)
 3. [Direct Competitor Differentiation Matrix](#-3-direct-competitor-differentiation-matrix)
 4. [System Architecture](#-4-system-architecture)
-5. [Core Features & Application Walkthrough](#-5-core-features--application-walkthrough)
-6. [Technology Stack](#-6-technology-stack)
-7. [REST API Catalog](#-7-rest-api-catalog)
-8. [Local Development & Setup](#-8-local-development--setup)
-9. [Deployment Guide (GitHub, Vercel & Render)](#-9-deployment-guide-github-vercel--render)
-10. [Submission Checklist](#-10-submission-checklist)
+5. [3–4 Minute Demo Video Script](#-5-34-minute-demo-video-script)
+6. [Assignment Tech Stack Compliance](#-6-assignment-tech-stack-compliance)
+7. [Core Features & Application Walkthrough](#-7-core-features--application-walkthrough)
+8. [REST API Catalog](#-8-rest-api-catalog)
+9. [Local Development & Setup](#-9-local-development--setup)
+10. [Deployment Guide (GitHub, Vercel & Render)](#-10-deployment-guide-github-vercel--render)
 
 ---
 
 ## 🎯 1. Problem Statement
 
-Commercial facilities, IT tech parks (e.g., Pune Hinjewadi & Bengaluru Electronic City), hospitals, and factories struggle with a compounding sustainability and financial crisis:
+Commercial facilities, IT tech parks (e.g., Pune Hinjewadi & Bengaluru Electronic City), hospitals, and factories struggle with a compounding sustainability and financial crisis caused by fragmented utility data and static electrical infrastructure:
 
-1. **The Peak Surcharge Penalty (MSEDCL ToD):**  
+1. **Severe Peak Time-of-Day (ToD) Surcharges:**  
    Under commercial Time-of-Day (ToD) tariffs in India (such as MSEDCL HT-I), power consumed during the evening peak window (**18:00 – 22:00 IST**) incurs an aggressive surcharge of **+₹1.50 per kWh**. Conversely, power consumed during the night trough (**22:00 – 06:00 IST**) earns a **-₹1.50 per kWh rebate**. This creates an unmanaged **₹3.00/kWh cost delta** every 24 hours.
 
 2. **The Evening Coal Peaker Carbon Spike:**  
@@ -42,11 +51,19 @@ Commercial facilities, IT tech parks (e.g., Pune Hinjewadi & Bengaluru Electroni
 
 ---
 
-## 💡 2. Solution Overview
+## 💡 2. Solution Description & AI Integration
 
-**WattHacks AI** is an autonomous, software-agnostic energy intelligence and tariff arbitrage platform. It transforms complex utility bills and fragmented facility equipment into an automated, carbon-minimizing powerhouse:
+**WattHacks AI** is an autonomous, $0 CAPEX, software-agnostic energy intelligence and tariff arbitrage platform. It transforms complex utility bills and fragmented facility equipment into an automated, carbon-minimizing powerhouse:
 
-* **Multimodal Document OCR (Google Gemini):** Ingests raw electricity bill PDFs, photos, and meter logs without manual data entry. It extracts billed demand (kVA), active energy units (kWh), power factor, and ToD slot splits in seconds.
+### 🤖 How Artificial Intelligence is Integrated (Google Gemini API)
+* **Multimodal Utility Bill Vision OCR (`gemini-1.5-flash` / `gemini-3.8-flash`):**  
+  Facility managers drag and drop complex MSEDCL/BESCOM/Tata Power electricity bill PDFs, meter photos, or diesel generator fuel logs. The Google Gemini Multimodal Vision API extracts consumer details, sanctioned contract demand (kVA), billed active energy units (kWh), power factor, and exact ToD slot splits in seconds with zero manual data entry.
+* **Automated Executive BRSR Audit Synthesis:**  
+  Gemini analyzes facility power consumption and autonomous load-shifting data to synthesize statutory SEBI BRSR Principle 6 audit reports, engineering work orders, and Scope 1 & 2 carbon disclosures with a cryptographic SHA-256 digital verification seal.
+* **Secure Backend Architecture:**  
+  The Google Gemini API key is strictly maintained and executed in backend environment variables (`backend/.env`), with zero client-side exposure.
+
+### ⚡ Key Features
 * **Autonomous Tariff & Carbon Arbitrage Engine:** Dynamically calculates load shifting for flexible facility assets (HVAC chillers, EV fleet chargers, thermal storage, and BESS batteries) out of the evening peak surcharge (+₹1.50) into the night rebate window (-₹1.50), saving facilities **₹12L–₹40L annually** with zero proprietary hardware.
 * **Statutory Carbon Accounting (India CEA Calibrated):** Maps every kilowatt-hour against the official Indian Central Electricity Authority emission factor (0.716 kg CO₂/kWh) and diesel generator burn (2.68 kg CO₂/L) for audit-grade Scope 1 and Scope 2 tracking.
 * **SEBI BRSR Principle 6 Automated Audit:** Generates one-click, publication-grade executive sustainability reports with an immutable SHA-256 cryptographic verification seal.
@@ -106,7 +123,40 @@ We believe in radical architectural honesty. Here is how **WattHacks AI** direct
 
 ---
 
-## 🖥️ 5. Core Features & Application Walkthrough
+## 🎬 5. 3–4 Minute Demo Video Script
+
+Use this scene-by-scene script when recording your 3–5 minute demonstration video:
+
+| Time | Screen Action | Voiceover Script |
+| :--- | :--- | :--- |
+| **0:00 – 0:40** | **Landing Page (`/`)**<br>Scroll hero, hover cards, show fluid liquid navbar. | *"Every evening between 6 PM and 10 PM across India's commercial facilities, electricity tariffs jump by up to +₹1.50 per unit in peak surcharges, and the grid spins up dirty coal peaker plants, spiking emissions above 700 grams of CO₂ per kilowatt-hour. Traditional building automation costs upwards of ₹50 Lakhs in proprietary hardware. This is WattHacks AI — a $0 CAPEX, software-agnostic energy arbitrage platform."* |
+| **0:40 – 1:15** | **Competitor Table**<br>Scroll to comparison section. | *"Here is our transparent competitor matrix: compared to legacy giants like Schneider and Siemens who lock you into proprietary hardware, or high-cost utility SaaS like Stem, WattHacks connects to existing meters in 15 minutes, with live Indian Central Electricity Authority carbon tracking, currently free during beta access."* |
+| **1:15 – 2:05** | **Bill Intake (`/ingest`)**<br>Click 'Upload Bill', drop sample MSEDCL bill, watch progress bar. | *"Now let's see our Google Gemini Multimodal AI in action. Instead of tedious manual entry, facility managers drag and drop their utility bill PDF or meter photo. Our backend calls Gemini 1.5 Flash to extract the consumer ID, sanctioned demand (550 kVA), billed units, power factor, and exact ToD slot penalties in seconds. Missing on-site assets like solar arrays or battery capacity can be calibrated here."* |
+| **2:05 – 2:50** | **Audit Report (`/audit`)**<br>Click 'Generate Audit Report', show grade, line-item table, click 'Download PDF'. | *"In one click, WattHacks generates a comprehensive energy audit: the facility receives an efficiency rating (Grade C), detects ₹1.84 Lakhs in avoidable peak surcharges, and details a forensic line-item breakdown. It sizes the optimal battery storage and solar capacity, achieving a 0.6-month software payback, and produces a SEBI BRSR Principle 6 audit report with a cryptographic SHA-256 seal for board ESG disclosures."* |
+| **2:50 – 3:30** | **Live Grid Console (`/console`)**<br>Show real-time telemetry, 24-hr diurnal load curve, and power matrix. | *"Finally, our Live Grid Intelligence Console connects facility loads directly to the Western Regional Grid. It shows live solar output, battery dispatch, and an interactive 24-hour diurnal curve demonstrating how 260 kWh of flexible load was shifted from the expensive evening peak into the night rebate, saving ₹48,000 monthly and abating 5.4 tons of CO₂. WattHacks AI turns passive energy bills into active grid intelligence."* |
+
+---
+
+## 🛠️ 6. Assignment Tech Stack Compliance
+
+| Assignment Tech Requirement | Required Choice | WattHacks AI Implementation |
+| :--- | :--- | :--- |
+| **Frontend** | React.js, Vite | **React 18** + **Vite 5** (Fast ES Modules) |
+| **Styling** | Tailwind CSS / React UI | **Tailwind CSS 3.4** + Custom Frosted Liquid Glass CSS |
+| **HTTP Client** | Axios or Fetch API | **Axios** (Configured with dynamic production `VITE_API_URL`) |
+| **Visualization** | Chart.js / Recharts | **SVG Vector 24-hr Diurnal Curves** & **Canvas Wave Shader** |
+| **Backend** | Node.js + Express.js | **Node.js (ESM)** + **Express 4.19** REST API |
+| **Authentication** | JWT Authentication | **`jsonwebtoken`** (Signed 7-day bearer tokens) |
+| **Password Hashing** | `bcrypt` | **`bcryptjs`** (Salted 10-round hash verification) |
+| **Schema Validation** | Zod, Joi, Express Validator | **`zod` 3.23** (Strict runtime schema validation on all inputs) |
+| **Database** | Multi-tenant schema | Scalable Multi-tenant Facility Profile & Equipment Schema |
+| **Artificial Intelligence** | Google Gemini API | **`@google/genai` (Gemini Flash)** (Backend environment variables only) |
+| **Frontend Deployment** | Vercel or Netlify | **Vercel Production Deployment** with SPA rewrites |
+| **Backend Deployment** | Render, Railway, Fly.io | **Render / Railway Ready** (`backend/server.js`) |
+
+---
+
+## 🖥️ 7. Core Features & Application Walkthrough
 
 The platform features a **4-Page Unified Workflow** designed with a distinctive Luminous Eco-Acrylic liquid glass design:
 
@@ -130,29 +180,7 @@ The platform features a **4-Page Unified Workflow** designed with a distinctive 
 
 ---
 
-## 💻 6. Technology Stack
-
-### Frontend
-* **Core:** React 18, Vite 5, JavaScript (ES Modules)
-* **Styling:** Tailwind CSS 3.4, PostCSS, Custom Frosted Liquid Glass CSS (`backdrop-filter: blur(32px)`)
-* **Icons & Visuals:** Lucide React, HTML5 2D Canvas dynamic sinusoidal wave simulation
-* **Data Visualization:** Scalable Vector Graphics (SVG) 24-hour diurnal curves and energy flow matrices
-* **HTTP Client:** Axios with dynamic runtime environment base URL support
-
-### Backend
-* **Runtime:** Node.js (v18+ or v20+) & Express 4
-* **Validation & Security:** Zod 3.23 (strict schema parsing), JSON Web Tokens (`jsonwebtoken`), `bcryptjs`
-* **File Processing:** Multer (in-memory buffer parsing for zero-disk security)
-* **CORS:** Cross-Origin Resource Sharing enabled for Vercel production domains
-
-### Artificial Intelligence & Data Sources
-* **Google Gemini API:** `@google/genai` (Gemini 1.5 Flash / Gemini 2.5 / Gemini 3.8 Flash) with resilient REST API fallback
-* **Solar Radiation:** Open-Meteo High-Resolution Direct Normal Solar Irradiance (W/m²)
-* **Grid Baseline:** India Ministry of Power Central Electricity Authority (CEA) Carbon Baseline v20
-
----
-
-## 📡 7. REST API Catalog
+## 📡 8. REST API Catalog
 
 | Method | Endpoint | Description | Auth |
 | :--- | :--- | :--- | :--- |
@@ -173,51 +201,31 @@ The platform features a **4-Page Unified Workflow** designed with a distinctive 
 
 ---
 
-## 🛠️ 8. Local Development & Setup
+## 🛠️ 9. Local Development & Setup
 
 ### Prerequisites
 * **Node.js:** v18.0.0 or higher
 * **npm:** v9.0.0 or higher
 * **Google Gemini API Key:** [Get a free key from Google AI Studio](https://aistudio.google.com/app/apikey)
 
-### Quick Start (Two Steps)
+### Quick Start
 
 ```bash
-# 1. Clone the repository
-git clone https://github.com/<your-username>/watthacks-ai.git
-cd watthacks-ai
+# 1. Clone repository
+git clone git@github.com:ypatil2006-coder/-watthacks-ai.git
+cd -watthacks-ai
 
-# 2. Install dependencies for both frontend and backend
+# 2. Install dependencies for full monorepo
 npm run install:all
-```
 
-### Environment Configuration
+# 3. Setup backend environment
+cp backend/.env.example backend/.env
+# (Add your GEMINI_API_KEY in backend/.env)
 
-1. **Backend Environment:**
-   ```bash
-   cp backend/.env.example backend/.env
-   ```
-   Edit `backend/.env` and paste your Gemini API Key:
-   ```env
-   PORT=5000
-   NODE_ENV=development
-   GEMINI_API_KEY=AIzaSy...your_gemini_key_here
-   JWT_SECRET=watthacks_super_secret_jwt_2026
-   ```
-
-2. **Frontend Environment:**
-   ```bash
-   cp frontend/.env.example frontend/.env
-   ```
-   *(For local development, `VITE_API_URL=/api` is already configured via the Vite proxy)*.
-
-### Running Locally
-
-```bash
-# Terminal 1: Start Express Backend (Port 5000)
+# 4. Run full stack locally
+# Terminal 1:
 npm run dev:backend
-
-# Terminal 2: Start Vite Frontend (Port 3000)
+# Terminal 2:
 npm run dev:frontend
 ```
 
@@ -225,68 +233,24 @@ Open your browser at: **`http://localhost:3000`**
 
 ---
 
-## 🚀 9. Deployment Guide (GitHub, Vercel & Render)
+## 🚀 10. Deployment Guide (GitHub, Vercel & Render)
 
-### Step 1: Push to GitHub
-
-Ensure `.gitignore` is present (already configured to prevent committing `.env` and `node_modules`):
+### Push Updates to GitHub
 
 ```bash
-git add .
-git commit -m "feat: complete WattHacks AI sustainability platform with Gemini OCR and Vercel setup"
-git branch -M main
-git remote add origin https://github.com/<your-username>/watthacks-ai.git
-git push -u origin main
+git add README.md
+git commit -m "docs: add official hackathon submission package, demo script and video link placeholder"
+git push origin main
 ```
 
----
+### Vercel Deployment Settings
 
-### Step 2: Deploy Frontend on Vercel
-
-1. Log in to [Vercel](https://vercel.com) and click **"Add New Project"**.
-2. Import your GitHub repository (`watthacks-ai`).
-3. Configure the Project Settings:
-   * **Framework Preset:** `Vite`
-   * **Root Directory:** `./` *(or select `frontend`)*
-   * **Build Command:** `npm run build` *(or `cd frontend && npm install && npm run build`)*
-   * **Output Directory:** `frontend/dist` *(or `dist` if root was set to frontend)*
-4. Set Environment Variables in Vercel:
-   | Key | Value |
-   | :--- | :--- |
-   | `VITE_API_URL` | `https://your-backend-service.onrender.com/api` *(or your deployed backend URL)* |
-5. Click **Deploy**. Vercel will build and launch your production web app in ~45 seconds.
-
----
-
-### Step 3: Deploy Backend on Render (or Railway / Fly.io)
-
-1. Log in to [Render](https://render.com) and create a **"New Web Service"**.
-2. Connect your GitHub repository.
-3. Configure the Service Settings:
-   * **Root Directory:** `backend`
-   * **Environment:** `Node`
-   * **Build Command:** `npm install`
-   * **Start Command:** `npm start`
-4. Add Environment Variables in Render:
-   | Key | Value |
-   | :--- | :--- |
-   | `NODE_ENV` | `production` |
-   | `PORT` | `5000` |
-   | `GEMINI_API_KEY` | `your_google_gemini_api_key_here` |
-   | `JWT_SECRET` | `your_secure_jwt_secret` |
-5. Click **Create Web Service**. Render will deploy the API and assign you a live HTTPS URL (e.g. `https://watthacks-api.onrender.com`).
-6. Copy that URL and update `VITE_API_URL` in your Vercel project settings.
-
----
-
-## ✅ 10. Submission Checklist
-
-- [x] **Problem Statement:** Outlines peak ToD surcharges, coal peaker emissions, and CAPEX hurdles.
-- [x] **Solution Description:** Fully explained autonomous load shifting and multi-region CEA accounting.
-- [x] **AI Integration:** Google Gemini Multimodal Vision API implemented with live document OCR & fallback.
-- [x] **GitHub Repository Ready:** Configured with clean `.gitignore`, `package.json`, and `.env.example`.
-- [x] **Vercel & Render Ready:** `vercel.json` configured with SPA rewrites and environment base URLs.
-- [x] **Direct Competitor Differentiation:** Transparent comparison table against Schneider, Siemens, Stem, and IoT monitors.
+* **Repository:** `ypatil2006-coder/-watthacks-ai`
+* **Framework:** `Vite`
+* **Root Directory:** `./`
+* **Build Command:** `cd frontend && npm install && npm run build` *(Pre-configured via `vercel.json`)*
+* **Output Directory:** `frontend/dist`
+* **Live Production URL:** [https://-watthacks-ai.vercel.app](https://-watthacks-ai.vercel.app)
 
 ---
 
