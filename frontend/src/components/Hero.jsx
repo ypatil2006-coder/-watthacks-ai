@@ -3,7 +3,7 @@ import React, { useState, useEffect, useRef } from 'react';
 const CARDS = [
   {
     image: 'https://images.unsplash.com/photo-1518780664697-55e3ad937233?auto=format&fit=crop&w=1200&q=80',
-    fallbackImage: 'https://images.unsplash.com/photo-1518780664697-55e3ad937233?auto=format&fit=crop&w=1200&q=80',
+    fallbackImage: 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=1200&q=80',
     tag: '01 / 04 • BIOPHILIC CAMPUS',
     category: 'Sustainable Architecture',
     title: 'Zero-Emission Corporate Eco Park',
@@ -11,8 +11,8 @@ const CARDS = [
     alt: 'WattHacks Sustainable Biophilic Corporate Eco Park'
   },
   {
-    image: 'https://images.unsplash.com/photo-1509391365360-2e959784a276?auto=format&fit=crop&w=1200&q=80',
-    fallbackImage: 'https://images.unsplash.com/photo-1509391365360-2e959784a276?auto=format&fit=crop&w=1200&q=80',
+    image: 'https://images.unsplash.com/photo-1594818379496-da1e345b0ded?auto=format&fit=crop&w=1200&q=80',
+    fallbackImage: 'https://images.unsplash.com/photo-1660330589257-813305a4a383?auto=format&fit=crop&w=1200&q=80',
     tag: '02 / 04 • SOLAR GENERATION',
     category: 'Photovoltaic Arrays',
     title: 'Utility-Scale Solar Energy Field',
@@ -21,7 +21,7 @@ const CARDS = [
   },
   {
     image: 'https://images.unsplash.com/photo-1611273426858-450d8e3c9fce?auto=format&fit=crop&w=1200&q=80',
-    fallbackImage: 'https://images.unsplash.com/photo-1611273426858-450d8e3c9fce?auto=format&fit=crop&w=1200&q=80',
+    fallbackImage: 'https://images.unsplash.com/photo-1542332213-9b5a5a3fad35?auto=format&fit=crop&w=1200&q=80',
     tag: '03 / 04 • CARBON ABATEMENT',
     category: 'Fossil Grid Baseline',
     title: 'Thermal Power Emissions Monitoring',
@@ -30,7 +30,7 @@ const CARDS = [
   },
   {
     image: 'https://images.unsplash.com/photo-1466611653911-95081537e5b7?auto=format&fit=crop&w=1200&q=80',
-    fallbackImage: 'https://images.unsplash.com/photo-1466611653911-95081537e5b7?auto=format&fit=crop&w=1200&q=80',
+    fallbackImage: 'https://images.unsplash.com/photo-1532601224476-15c79f2f7a51?auto=format&fit=crop&w=1200&q=80',
     tag: '04 / 04 • KINETIC WIND POWER',
     category: 'Renewable Night Tariffs',
     title: 'Coastal Wind Turbine Farm',
@@ -203,16 +203,19 @@ export default function Hero() {
                       ? 'transform 0.9s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.75s ease-out'
                       : 'transform 0.9s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.8s ease, box-shadow 0.8s ease'
                   }}
-                  className="absolute inset-0 rounded-3xl overflow-hidden border border-white/80 bg-slate-900 group/card will-change-transform"
+                  className="absolute inset-0 rounded-3xl overflow-hidden border border-white/80 bg-gradient-to-br from-slate-900 via-slate-800 to-emerald-950 group/card will-change-transform"
                 >
                   <img
                     src={card.image}
                     onError={(e) => {
                       if (card.fallbackImage && e.currentTarget.src !== card.fallbackImage) {
                         e.currentTarget.src = card.fallbackImage;
+                      } else {
+                        e.currentTarget.style.opacity = '0';
                       }
                     }}
                     alt={card.alt}
+                    loading="eager"
                     className="w-full h-full object-cover transition-transform duration-700 ease-out group-hover/card:scale-105"
                   />
                   <div className="specular-sheen pointer-events-none"></div>
