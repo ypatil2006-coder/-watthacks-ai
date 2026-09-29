@@ -3,7 +3,7 @@ import { Shield, ExternalLink, Zap } from 'lucide-react';
 
 export default function Footer() {
   return (
-    <footer className="relative z-10 border-t border-slate-900/[0.08] bg-white/40 backdrop-blur-md mt-20">
+    <footer className="no-print relative z-10 border-t border-slate-900/[0.08] bg-white/40 backdrop-blur-md mt-20">
       <div className="max-w-7xl mx-auto px-6 lg:px-12 py-12">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8 pb-10 border-b border-slate-900/[0.06]">
           {/* Col 1: Brand & Purpose */}

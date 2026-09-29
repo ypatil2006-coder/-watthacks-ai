@@ -8,8 +8,8 @@ if git diff --staged --quiet; then
   echo "✨ Working tree is already 100% clean! Nothing new to commit."
 else
   echo "📝 Creating sync commit..."
-  git commit -m "fix(build): add CustomCursor component and complete frontend assets for Vercel"
+  git commit -m "fix(pdf): resolve standalone tab generator and eliminate navbar/footer overlaps during print"
   echo "⬆️  Pushing to GitHub (origin/main)..."
   git push origin main
-  echo "✅ Successfully pushed all files to GitHub! Vercel build will now succeed."
+  echo "✅ Successfully pushed all files to GitHub!"
 fi

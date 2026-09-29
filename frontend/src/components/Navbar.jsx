@@ -103,7 +103,7 @@ export default function Navbar({ currentPage = 'landing', onNavigate }) {
   };
 
   return (
-    <div className="fixed top-4 sm:top-6 left-0 right-0 z-50 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-12 pointer-events-none">
+    <div className="no-print fixed top-4 sm:top-6 left-0 right-0 z-50 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-12 pointer-events-none">
       <header className="navbar-liquid-glass relative rounded-full px-6 sm:px-8 py-3.5 flex items-center justify-between overflow-hidden shadow-2xl transition-all duration-300 pointer-events-auto">
         <canvas
           ref={canvasRef}

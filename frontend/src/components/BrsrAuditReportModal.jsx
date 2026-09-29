@@ -566,52 +566,142 @@ export default function BrsrAuditReportModal({
   if (!isOpen) return null;
 
   const handlePrint = () => {
+    document.body.classList.add('printing-modal');
     window.print();
+    setTimeout(() => {
+      document.body.classList.remove('printing-modal');
+    }, 1200);
   };
 
   const handleOpenStandalone = () => {
-    const eqList = Array.isArray(formData?.equipment) && formData.equipment.length > 0
-      ? formData.equipment
-      : [
-          formData?.hasHvac && 'hvac',
-          formData?.hasInverter && 'inverter',
-          formData?.hasEv && 'ev',
-          formData?.hasDg && 'dg'
-        ].filter(Boolean);
+    const printableEl = document.getElementById('brsr-printable-content');
+    if (!printableEl) {
+      window.print();
+      return;
+    }
 
-    const demandVal = Number(formData?.demand || 500);
-    const billVal = Number(formData?.monthlyBill || 850000);
-    const shiftedVal = savingsData?.shiftedKwh || Math.round(demandVal * 0.52);
-    const monthlySavVal = savingsData?.monthlySavings || Math.round(shiftedVal * 30 * (peakPenaltyRate + nightRebateRate));
-    const annualSavVal = savingsData?.annualSavings || monthlySavVal * 12;
-    const carbonVal = savingsData?.carbonAbated || +((shiftedVal * 30 * ceaBaseline) / 1000).toFixed(2);
+    const contentHtml = printableEl.innerHTML;
+    const reportId = auditData?.auditReportId || 'AGY-BRSR-2026-4892';
+    const facilityName = auditData?.facilityProfile?.name || formData?.facilityName || 'Commercial Facility Node';
+    const gridZoneName = formData?.gridZone || 'Regional Grid';
 
-    const params = new URLSearchParams({
-      name: formData?.facilityName || 'Commercial Facility',
-      type: formData?.facilityType || 'Commercial Campus',
-      discom: formData?.discom || 'MSEDCL (Maharashtra)',
-      demand: demandVal,
-      bill: billVal,
-      solar: formData?.solar || 0,
-      bess: formData?.bess || 0,
-      hasDg: (formData?.hasDg || eqList.includes('dg')) ? 'true' : 'false',
-      equipment: eqList.join(','),
-      monthlySavings: monthlySavVal,
-      annualSavings: annualSavVal,
-      carbonAvoided: carbonVal,
-      shiftedKwh: shiftedVal,
-      location: location,
-      gridZone: gridZone,
-      ceaBaseline: ceaBaseline,
-      peakPenaltyRate: peakPenaltyRate,
-      nightRebateRate: nightRebateRate
-    });
-    window.open(`/api/audit/html?${params.toString()}`, '_blank');
+    const standaloneHtml = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>${facilityName} - Statutory SEBI BRSR Principle 6 Energy Audit (${reportId})</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background-color: #f1f5f9;
+      color: #0f172a;
+      margin: 0;
+      padding: 0;
+      -webkit-font-smoothing: antialiased;
+    }
+    .font-mono {
+      font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    }
+    @media print {
+      body {
+        background: #ffffff !important;
+        color: #000000 !important;
+        padding: 0 !important;
+        margin: 0 !important;
+      }
+      .no-print, header, nav, footer, button, .top-toolbar {
+        display: none !important;
+      }
+      .page-card {
+        box-shadow: none !important;
+        border: none !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        max-width: 100% !important;
+        width: 100% !important;
+      }
+      svg, .chart-card, .audit-section {
+        page-break-inside: avoid !important;
+        break-inside: avoid !important;
+      }
+      table, tr, td, th {
+        page-break-inside: avoid !important;
+        break-inside: avoid !important;
+      }
+      @page {
+        size: A4 portrait;
+        margin: 10mm 14mm 10mm 14mm;
+      }
+    }
+  </style>
+</head>
+<body class="bg-slate-100 min-h-screen text-slate-800 text-xs">
+  <!-- Top Action Toolbar (Hidden in Print) -->
+  <div class="top-toolbar no-print sticky top-0 z-50 bg-slate-900 text-white px-6 py-3.5 flex items-center justify-between shadow-lg border-b border-slate-800">
+    <div class="flex items-center gap-3">
+      <div class="flex items-center gap-2">
+        <span class="font-extrabold text-sm text-white">WattHacks</span>
+        <span class="font-bold text-sm text-emerald-400">AI</span>
+      </div>
+      <span class="text-slate-400 text-xs font-mono">• Statutory SEBI BRSR Audit Standalone Viewer</span>
+      <span class="text-[10px] font-mono bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded border border-emerald-500/30">
+        ${reportId}
+      </span>
+    </div>
+    <div class="flex items-center gap-2.5">
+      <button 
+        onclick="window.print()" 
+        class="px-4 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs transition-all flex items-center gap-1.5 shadow-md cursor-pointer active:scale-95"
+      >
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
+        <span>Print / Save as PDF</span>
+      </button>
+      <button 
+        onclick="window.close()" 
+        class="px-3.5 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white font-mono text-xs transition-all cursor-pointer"
+      >
+        Close
+      </button>
+    </div>
+  </div>
+
+  <!-- Main Document Container -->
+  <main class="max-w-4xl mx-auto my-6 p-6 sm:p-10 bg-white border border-slate-200/80 shadow-2xl rounded-2xl page-card">
+    ${contentHtml}
+  </main>
+</body>
+</html>`;
+
+    try {
+      const blob = new Blob([standaloneHtml], { type: 'text/html;charset=utf-8' });
+      const blobUrl = URL.createObjectURL(blob);
+      const newTab = window.open(blobUrl, '_blank');
+      if (!newTab || newTab.closed || typeof newTab.closed === 'undefined') {
+        const fallbackTab = window.open('', '_blank');
+        if (fallbackTab) {
+          fallbackTab.document.open();
+          fallbackTab.document.write(standaloneHtml);
+          fallbackTab.document.close();
+        }
+      }
+    } catch (e) {
+      const fallbackTab = window.open('', '_blank');
+      if (fallbackTab) {
+        fallbackTab.document.open();
+        fallbackTab.document.write(standaloneHtml);
+        fallbackTab.document.close();
+      }
+    }
   };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-950/70 backdrop-blur-sm flex justify-center p-3 sm:p-6 animate-fadeIn">
-      <div className="relative w-full max-w-4xl bg-white rounded-3xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col my-auto">
+    <div id="brsr-modal-overlay" className="fixed inset-0 z-50 overflow-y-auto bg-slate-950/70 backdrop-blur-sm flex justify-center p-3 sm:p-6 animate-fadeIn">
+      <div id="brsr-modal-card" className="relative w-full max-w-4xl bg-white rounded-3xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col my-auto">
         
         {/* Sticky Action Toolbar (Hidden in Print) */}
         <div className="sticky top-0 z-20 bg-slate-900 text-white px-6 py-4 flex flex-wrap items-center justify-between gap-3 shadow-md no-print">

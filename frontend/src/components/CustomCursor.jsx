@@ -87,7 +87,7 @@ export default function CustomCursor() {
   return (
     <div
       ref={cursorRef}
-      className="fixed top-0 left-0 pointer-events-none z-[999999] flex items-center justify-center will-change-transform"
+      className="no-print fixed top-0 left-0 pointer-events-none z-[999999] flex items-center justify-center will-change-transform"
       style={{
         transform: 'translate3d(-200px, -200px, 0) translate(-50%, -50%)',
         mixBlendMode: 'difference'

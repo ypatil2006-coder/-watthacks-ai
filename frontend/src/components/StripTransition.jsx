@@ -37,7 +37,7 @@ export default function StripTransition({ active, phase, direction = 'down' }) {
 
   return (
     <div 
-      className="fixed inset-0 z-[9999] pointer-events-auto grid overflow-hidden select-none"
+      className="no-print fixed inset-0 z-[9999] pointer-events-auto grid overflow-hidden select-none"
       style={{ gridTemplateColumns: `repeat(${NUM_STRIPS}, minmax(0, 1fr))` }}
       aria-hidden="true"
     >
