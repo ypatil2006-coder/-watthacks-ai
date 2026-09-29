@@ -1,0 +1,28 @@
+{
+  "name": "watthacks-ai",
+  "version": "2.0.0",
+  "description": "WattHacks AI — Autonomous Energy Arbitrage & Carbon Grid Intelligence for Commercial Facilities",
+  "private": true,
+  "scripts": {
+    "dev": "npm run dev --prefix frontend",
+    "dev:backend": "npm run dev --prefix backend",
+    "dev:frontend": "npm run dev --prefix frontend",
+    "build": "npm run build --prefix frontend",
+    "start": "npm start --prefix backend",
+    "install:all": "npm install --prefix backend && npm install --prefix frontend",
+    "install:frontend": "npm install --prefix frontend",
+    "install:backend": "npm install --prefix backend"
+  },
+  "keywords": [
+    "sustainability",
+    "energy-arbitrage",
+    "gemini-api",
+    "tod-tariffs",
+    "carbon-accounting",
+    "msedcl",
+    "clean-energy",
+    "ai-for-sustainability"
+  ],
+  "author": "Team wallHacks",
+  "license": "MIT"
+}

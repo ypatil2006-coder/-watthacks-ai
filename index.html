@@ -1,0 +1,2105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>WattHacks AI • Autonomous Grid Intelligence & Energy Auditor</title>
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- Fonts: Plus Jakarta Sans & JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+            mono: ['"JetBrains Mono"', 'monospace']
+          },
+          colors: {
+            brand: {
+              apricot: '#FB923C',
+              dark: '#0F172A',
+              bg: '#F8FAF8'
+            }
+          }
+        }
+      }
+    };
+  </script>
+
+  <style>
+    /* Global High-Contrast Inverted Text Selection */
+    ::selection {
+      background-color: #000000 !important;
+      color: #ffffff !important;
+    }
+    ::-moz-selection {
+      background-color: #000000 !important;
+      color: #ffffff !important;
+    }
+
+    body {
+      background-color: #F8FAF8;
+      color: #0F172A;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      overflow-x: hidden;
+      scroll-behavior: smooth;
+    }
+
+    #wave-canvas {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .ambient-glows {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 0;
+      background: 
+        radial-gradient(circle at 18% 18%, rgba(52, 211, 153, 0.12), transparent 48%),
+        radial-gradient(circle at 82% 78%, rgba(251, 146, 60, 0.08), transparent 48%),
+        radial-gradient(circle at 50% 50%, rgba(16, 185, 129, 0.04), transparent 60%);
+    }
+
+    .liquid-glass {
+      background: rgba(255, 255, 255, 0.72);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.85);
+      position: relative;
+    }
+
+    .navbar-liquid-glass {
+      background: rgba(236, 253, 245, 0.32) !important;
+      backdrop-filter: blur(28px) saturate(200%) !important;
+      -webkit-backdrop-filter: blur(28px) saturate(200%) !important;
+      border: 1.5px solid rgba(255, 255, 255, 0.75) !important;
+      box-shadow: 
+        0 20px 48px -12px rgba(16, 185, 129, 0.28),
+        0 0 0 1px rgba(255, 255, 255, 0.6) inset,
+        0 8px 24px -4px rgba(15, 23, 42, 0.08) !important;
+      position: relative;
+    }
+
+    .specular-sheen {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg, rgba(255, 255, 255, 0.55) 0%, rgba(255, 255, 255, 0) 45%, rgba(255, 255, 255, 0.15) 100%);
+      pointer-events: none;
+      border-radius: inherit;
+    }
+
+    /* Card Deck Slider Classes */
+    .deck-card {
+      transition: transform 0.65s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.65s ease, filter 0.65s ease, box-shadow 0.65s ease;
+      will-change: transform, opacity;
+    }
+
+    .deck-card.swiping-out {
+      transform: translate(110%, -24px) rotate(16deg) !important;
+      opacity: 0 !important;
+      filter: blur(4px) !important;
+      transition: all 0.82s cubic-bezier(0.2, 0.8, 0.2, 1) !important;
+    }
+  </style>
+</head>
+<body class="relative min-h-screen flex flex-col justify-between">
+
+  <!-- Ambient Glow & Wave Canvas Background -->
+  <div class="ambient-glows"></div>
+  <canvas id="wave-canvas"></canvas>
+
+  <!-- ======================================================== -->
+  <!-- STICKY NAVBAR WITH PERSISTENT PAGE TABS                  -->
+  <!-- ======================================================== -->
+  <div class="sticky top-6 z-40 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-12">
+    <header class="navbar-liquid-glass relative rounded-full px-6 sm:px-8 py-3.5 flex items-center justify-between overflow-hidden shadow-2xl">
+      <!-- Green Liquid Flowing Canvas inside Navbar -->
+      <canvas id="navbar-liquid-canvas" class="absolute inset-0 w-full h-full rounded-full pointer-events-none z-[1] opacity-90"></canvas>
+      <div class="specular-sheen z-[2]"></div>
+
+      <div class="relative z-10 flex items-center justify-between w-full">
+        <!-- Logo -->
+        <a href="javascript:void(0)" onclick="navigateToPage('home')" class="text-xl font-medium tracking-tight text-slate-900 relative inline-block group cursor-pointer">
+          WattHacks
+          <span class="absolute -bottom-1 left-0 w-6 h-[2px] bg-brand-apricot rounded-full transition-all duration-300 group-hover:w-full"></span>
+        </a>
+
+        <!-- Contextual Navigation for Current Page ONLY -->
+        <nav id="nav-context-links" class="hidden md:flex items-center gap-6 text-xs font-semibold tracking-wide text-slate-700">
+          <button
+            onclick="navigateToPage('home', 'hero')"
+            class="py-1 px-2.5 rounded-lg text-slate-950 font-bold bg-slate-900/5 hover:text-slate-950 transition-colors cursor-pointer"
+          >
+            Overview
+          </button>
+
+          <button
+            onclick="navigateToPage('home', 'comparison')"
+            class="py-1 px-2.5 rounded-lg text-slate-700 hover:text-slate-950 transition-colors cursor-pointer"
+          >
+            Vs Competitors
+          </button>
+
+          <button
+            onclick="navigateToPage('home', 'features')"
+            class="py-1 px-2.5 rounded-lg text-slate-700 hover:text-slate-950 transition-colors cursor-pointer"
+          >
+            Features
+          </button>
+        </nav>
+
+        <!-- Right Quick Action (Contextual to Current Page) -->
+        <div class="flex items-center gap-2">
+          <button
+            id="nav-action-btn"
+            onclick="navigateToPage('ingest')"
+            class="px-4 sm:px-5 py-2 rounded-full border border-slate-900 bg-slate-900 text-white hover:bg-slate-800 text-xs font-semibold tracking-wider transition-all cursor-pointer active:scale-95 shadow-sm flex items-center gap-1.5"
+          >
+            <span>Upload Bill ↑</span>
+          </button>
+        </div>
+      </div>
+    </header>
+  </div>
+
+  <!-- ======================================================== -->
+  <!-- PAGE 1: HOME & LANDING (Hero Card Slider, Competitors)  -->
+  <!-- ======================================================== -->
+  <div id="page-home" class="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-12 w-full py-8 space-y-16">
+    
+    <!-- HERO SECTION WITH 4-CARD REALISTIC SLIDER -->
+    <section id="hero" class="min-h-[72vh] flex flex-col justify-center pt-4">
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-16 items-center">
+        
+        <!-- Left Column: Product Value Statement -->
+        <div class="lg:col-span-6 flex flex-col items-start justify-center pr-0 lg:pr-6">
+          <div class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-800 text-xs font-mono font-semibold mb-6">
+            <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+            Autonomous Grid Intelligence & Arbitrage
+          </div>
+
+          <h1 class="text-4xl sm:text-6xl font-light text-slate-900 tracking-tight leading-[1.08] mb-6">
+            Enhance your <br />
+            <span class="font-semibold text-slate-950">grid intelligence.</span>
+          </h1>
+
+          <p class="text-slate-600 text-base sm:text-lg font-light leading-relaxed max-w-lg mb-8">
+            Autonomous energy arbitrage powered by Gemini. Shift heavy commercial loads away from peak fossil surcharges into clean night rebates.
+          </p>
+
+          <div class="flex flex-wrap items-center gap-4">
+            <button
+              onclick="navigateToPage('ingest')"
+              class="px-7 py-3.5 rounded-full bg-slate-900 hover:bg-slate-800 text-white font-semibold text-xs sm:text-sm tracking-wide transition-all shadow-xl hover:shadow-2xl hover:scale-105 active:scale-95 flex items-center gap-2.5 cursor-pointer"
+            >
+              <span>Upload Utility Bill & Audit</span>
+              <svg class="w-4 h-4 text-emerald-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+            </button>
+
+            <button
+              onclick="navigateToPage('console')"
+              class="px-6 py-3.5 rounded-full border border-slate-300 bg-white/80 hover:bg-white text-slate-800 font-semibold text-xs sm:text-sm font-mono transition-all shadow-sm active:scale-95 cursor-pointer"
+            >
+              Live Grid Console →
+            </button>
+          </div>
+        </div>
+
+        <!-- Right Column: 4-Card Deck Realistic Sliding Showcase -->
+        <div class="lg:col-span-6 flex flex-col items-center justify-center relative">
+          <!-- Card Deck Stage Container -->
+          <div 
+            id="card-deck-container"
+            class="relative w-[340px] sm:w-[420px] md:w-[460px] h-[460px] sm:h-[500px]"
+            title="Click top card to slide to next visual"
+          >
+            <!-- Card 0: Eco Park -->
+            <div
+              id="deck-card-0"
+              class="deck-card absolute inset-0 rounded-3xl overflow-hidden cursor-pointer border border-white/80 bg-white shadow-2xl select-none"
+              onclick="slideDeckNext()"
+            >
+              <img
+                src="file:///home/yash/.gemini/antigravity-cli/brain/ddc0818a-ff83-4a41-b7e9-b7f89d36df57/eco_friendly_park_1790666504368.jpg"
+                onerror="if(this.src!=='https://images.unsplash.com/photo-1518780664697-55e3ad937233?auto=format&fit=crop&w=1200&q=80')this.src='https://images.unsplash.com/photo-1518780664697-55e3ad937233?auto=format&fit=crop&w=1200&q=80';"
+                alt="Corporate Eco Park"
+                class="w-full h-full object-cover pointer-events-none"
+              />
+              <div class="absolute inset-0 bg-gradient-to-t from-slate-950/85 via-slate-950/20 to-transparent pointer-events-none"></div>
+              <div class="absolute top-4 left-4 z-10">
+                <span class="px-3 py-1 rounded-full bg-slate-950/70 backdrop-blur-md text-white text-[10px] font-mono tracking-wider uppercase border border-white/20">
+                  01 / 04 • BIOPHILIC CAMPUS
+                </span>
+              </div>
+              <div class="absolute bottom-5 left-5 right-5 z-10 text-white">
+                <span class="text-xs font-mono text-emerald-400 block mb-1">Sustainable Architecture</span>
+                <h3 class="text-lg sm:text-xl font-semibold leading-tight">Zero-Emission Corporate Eco Park</h3>
+                <p class="text-xs text-slate-300 font-light mt-1">Biophilic timber design & living wetlands balancing urban thermal loads.</p>
+              </div>
+            </div>
+
+            <!-- Card 1: Solar Energy Field -->
+            <div
+              id="deck-card-1"
+              class="deck-card absolute inset-0 rounded-3xl overflow-hidden cursor-pointer border border-white/80 bg-white shadow-2xl select-none"
+              onclick="slideDeckNext()"
+            >
+              <img
+                src="file:///home/yash/.gemini/antigravity-cli/brain/ddc0818a-ff83-4a41-b7e9-b7f89d36df57/solar_energy_field_1790666516684.jpg"
+                onerror="if(this.src!=='https://images.unsplash.com/photo-1509391365360-2e959784a276?auto=format&fit=crop&w=1200&q=80')this.src='https://images.unsplash.com/photo-1509391365360-2e959784a276?auto=format&fit=crop&w=1200&q=80';"
+                alt="Solar Energy Field"
+                class="w-full h-full object-cover pointer-events-none"
+              />
+              <div class="absolute inset-0 bg-gradient-to-t from-slate-950/85 via-slate-950/20 to-transparent pointer-events-none"></div>
+              <div class="absolute top-4 left-4 z-10">
+                <span class="px-3 py-1 rounded-full bg-slate-950/70 backdrop-blur-md text-white text-[10px] font-mono tracking-wider uppercase border border-white/20">
+                  02 / 04 • SOLAR GENERATION
+                </span>
+              </div>
+              <div class="absolute bottom-5 left-5 right-5 z-10 text-white">
+                <span class="text-xs font-mono text-emerald-400 block mb-1">Photovoltaic Arrays</span>
+                <h3 class="text-lg sm:text-xl font-semibold leading-tight">Utility-Scale Solar Energy Field</h3>
+                <p class="text-xs text-slate-300 font-light mt-1">Direct green kilowatt arbitrage during peak daytime solar insolation.</p>
+              </div>
+            </div>
+
+            <!-- Card 2: Carbon Emission Grid -->
+            <div
+              id="deck-card-2"
+              class="deck-card absolute inset-0 rounded-3xl overflow-hidden cursor-pointer border border-white/80 bg-white shadow-2xl select-none"
+              onclick="slideDeckNext()"
+            >
+              <img
+                src="file:///home/yash/.gemini/antigravity-cli/brain/ddc0818a-ff83-4a41-b7e9-b7f89d36df57/carbon_emission_grid_1790666540937.jpg"
+                onerror="if(this.src!=='https://images.unsplash.com/photo-1611273426858-450d8e3c9fce?auto=format&fit=crop&w=1200&q=80')this.src='https://images.unsplash.com/photo-1611273426858-450d8e3c9fce?auto=format&fit=crop&w=1200&q=80';"
+                alt="Thermal Power Monitoring"
+                class="w-full h-full object-cover pointer-events-none"
+              />
+              <div class="absolute inset-0 bg-gradient-to-t from-slate-950/85 via-slate-950/20 to-transparent pointer-events-none"></div>
+              <div class="absolute top-4 left-4 z-10">
+                <span class="px-3 py-1 rounded-full bg-slate-950/70 backdrop-blur-md text-white text-[10px] font-mono tracking-wider uppercase border border-white/20">
+                  03 / 04 • CARBON ABATEMENT
+                </span>
+              </div>
+              <div class="absolute bottom-5 left-5 right-5 z-10 text-white">
+                <span class="text-xs font-mono text-emerald-400 block mb-1">Fossil Grid Baseline</span>
+                <h3 class="text-lg sm:text-xl font-semibold leading-tight">Thermal Power Emissions Monitoring</h3>
+                <p class="text-xs text-slate-300 font-light mt-1">Displacing coal-heavy peak surcharges (India CEA 0.716 kg/kWh baseline).</p>
+              </div>
+            </div>
+
+            <!-- Card 3: Wind Turbines -->
+            <div
+              id="deck-card-3"
+              class="deck-card absolute inset-0 rounded-3xl overflow-hidden cursor-pointer border border-white/80 bg-white shadow-2xl select-none"
+              onclick="slideDeckNext()"
+            >
+              <img
+                src="file:///home/yash/.gemini/antigravity-cli/brain/ddc0818a-ff83-4a41-b7e9-b7f89d36df57/wind_energy_turbines_1790666557944.jpg"
+                onerror="if(this.src!=='https://images.unsplash.com/photo-1466611653911-95081537e5b7?auto=format&fit=crop&w=1200&q=80')this.src='https://images.unsplash.com/photo-1466611653911-95081537e5b7?auto=format&fit=crop&w=1200&q=80';"
+                alt="Wind Turbines"
+                class="w-full h-full object-cover pointer-events-none"
+              />
+              <div class="absolute inset-0 bg-gradient-to-t from-slate-950/85 via-slate-950/20 to-transparent pointer-events-none"></div>
+              <div class="absolute top-4 left-4 z-10">
+                <span class="px-3 py-1 rounded-full bg-slate-950/70 backdrop-blur-md text-white text-[10px] font-mono tracking-wider uppercase border border-white/20">
+                  04 / 04 • KINETIC WIND POWER
+                </span>
+              </div>
+              <div class="absolute bottom-5 left-5 right-5 z-10 text-white">
+                <span class="text-xs font-mono text-emerald-400 block mb-1">Renewable Night Tariffs</span>
+                <h3 class="text-lg sm:text-xl font-semibold leading-tight">Coastal Wind Turbine Farm</h3>
+                <p class="text-xs text-slate-300 font-light mt-1">Harvesting off-peak nighttime wind energy rebates across Maharashtra.</p>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- Slider Controls & Auto-scroll Indicator -->
+          <div class="mt-8 flex items-center justify-between w-full max-w-[420px] px-2 text-xs font-mono text-slate-500">
+            <div class="flex items-center gap-2">
+              <button 
+                onclick="slideDeckPrev()" 
+                class="w-8 h-8 rounded-full border border-slate-300 bg-white/80 hover:bg-slate-900 hover:text-white flex items-center justify-center cursor-pointer transition-all active:scale-90"
+              >
+                ←
+              </button>
+              <button 
+                onclick="slideDeckNext()" 
+                class="w-8 h-8 rounded-full border border-slate-300 bg-white/80 hover:bg-slate-900 hover:text-white flex items-center justify-center cursor-pointer transition-all active:scale-90"
+              >
+                →
+              </button>
+              <span class="text-[11px] text-slate-400 ml-2">Click cards or arrows</span>
+            </div>
+            
+            <div class="flex items-center gap-1.5 text-[11px]">
+              <span class="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
+              <span>Auto-cycle 3.5s</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- CALLOUT BANNER: INSTANT BILL AUDIT SHORTCUT -->
+    <section class="liquid-glass rounded-3xl p-6 sm:p-8 border border-white/80 shadow-xl flex flex-col sm:flex-row items-center justify-between gap-6 bg-gradient-to-r from-emerald-500/10 via-white/80 to-amber-500/10">
+      <div class="space-y-1">
+        <span class="text-[11px] font-mono uppercase text-emerald-800 font-semibold tracking-wider flex items-center gap-1.5">
+          <svg class="w-3.5 h-3.5 text-emerald-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 11 3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+          Instant OCR Tariff Ingestion
+        </span>
+        <h3 class="text-xl sm:text-2xl font-semibold text-slate-900">
+          Have an electricity bill? Run a 10-second tariff audit.
+        </h3>
+        <p class="text-xs text-slate-600 font-light max-w-xl">
+          Drop any Indian commercial utility bill (MSEDCL, BESCOM, Tata Power, etc.) to immediately detect peak ToD surcharges and get an audit-grade sizing plan.
+        </p>
+      </div>
+
+      <button
+        onclick="navigateToPage('ingest')"
+        class="px-6 py-3.5 rounded-full bg-slate-900 hover:bg-slate-800 text-white font-semibold text-xs sm:text-sm font-mono transition-all shadow-xl hover:shadow-2xl hover:scale-105 active:scale-95 flex items-center gap-2.5 cursor-pointer whitespace-nowrap"
+      >
+        <span>Upload Bill & Audit</span>
+        <svg class="w-4 h-4 text-emerald-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+      </button>
+    </section>
+
+    <!-- SECTION 2: HONEST COMPETITOR COMPARISON TABLE -->
+    <section id="comparison" class="pt-6 pb-6 space-y-6">
+      <div class="text-center max-w-3xl mx-auto space-y-2">
+        <span class="text-xs font-mono uppercase text-emerald-800 font-semibold tracking-wider">
+          Market Intelligence & Honest Pricing
+        </span>
+        <h2 class="text-2xl sm:text-4xl font-semibold text-slate-900">
+          How WattHacks Truly Compares to Existing Solutions
+        </h2>
+        <p class="text-xs sm:text-sm text-slate-500 font-light">
+          A transparent evaluation of legacy industrial building management vs. high-cost BESS SaaS vs. WattHacks.
+        </p>
+      </div>
+
+      <div class="liquid-glass rounded-3xl p-6 sm:p-8 shadow-xl border border-white/80 overflow-x-auto">
+        <table class="w-full text-left text-xs font-mono border-collapse">
+          <thead>
+            <tr class="border-b border-slate-300 text-slate-500 uppercase text-[10px] tracking-wider">
+              <th class="py-3 px-3">Solution Type</th>
+              <th class="py-3 px-3">Typical Setup Cost & Pricing</th>
+              <th class="py-3 px-3">Deployment Time</th>
+              <th class="py-3 px-3">Autonomous ToD Arbitrage</th>
+              <th class="py-3 px-3">CEA Carbon Factor</th>
+              <th class="py-3 px-3">Hardware Lock-in</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-200 text-slate-700">
+            <tr class="hover:bg-slate-50/50">
+              <td class="py-4 px-3 font-semibold text-slate-900">
+                Legacy BMS Systems
+                <span class="block text-[10px] text-slate-400 font-normal">Schneider, Siemens, Honeywell</span>
+              </td>
+              <td class="py-4 px-3 text-slate-800 font-semibold">₹35L – ₹1.2 Cr CAPEX + ₹8L/yr AMC</td>
+              <td class="py-4 px-3 text-amber-700">3 – 6 Months</td>
+              <td class="py-4 px-3 text-slate-400">❌ Rule-based only</td>
+              <td class="py-4 px-3 text-slate-400">❌ Not tracked</td>
+              <td class="py-4 px-3 text-rose-700">Severe (Proprietary PLCs)</td>
+            </tr>
+
+            <tr class="hover:bg-slate-50/50">
+              <td class="py-4 px-3 font-semibold text-slate-900">
+                Enterprise Utility BESS SaaS
+                <span class="block text-[10px] text-slate-400 font-normal">Stem Inc, Fluence Energy</span>
+              </td>
+              <td class="py-4 px-3 text-slate-800 font-semibold">₹2.5L – ₹6.5L / month</td>
+              <td class="py-4 px-3 text-slate-700">4 – 8 Weeks</td>
+              <td class="py-4 px-3 text-emerald-700 font-bold">✓ Utility-scale</td>
+              <td class="py-4 px-3 text-slate-600">Partial (US/EU only)</td>
+              <td class="py-4 px-3 text-amber-700">High (Vendor BESS)</td>
+            </tr>
+
+            <tr class="hover:bg-emerald-50/60 bg-emerald-50/30">
+              <td class="py-4 px-3 font-bold text-slate-950">
+                ⚡ WattHacks AI
+                <span class="block text-[10px] text-emerald-700 font-normal">Autonomous Grid Intelligence</span>
+              </td>
+              <td class="py-4 px-3 font-bold text-emerald-800">Currently Free (Zero CAPEX)</td>
+              <td class="py-4 px-3 text-emerald-700 font-bold">&lt; 15 Minutes</td>
+              <td class="py-4 px-3 text-emerald-700 font-bold">✓ 24 Regional Indian DISCOMs</td>
+              <td class="py-4 px-3 text-emerald-700 font-bold">✓ CEA 0.716 & SEBI BRSR</td>
+              <td class="py-4 px-3 text-emerald-700 font-bold">Zero (Open Modbus/BACnet)</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- SECTION 3: CORE ARCHITECTURAL FEATURES -->
+    <section id="features" class="pt-6 pb-12 space-y-6">
+      <div class="text-center max-w-3xl mx-auto space-y-2">
+        <span class="text-xs font-mono uppercase text-emerald-800 font-semibold tracking-wider">
+          Architectural Differentiation
+        </span>
+        <h2 class="text-2xl sm:text-4xl font-semibold text-slate-900">
+          Engineered for Real Industrial Grids
+        </h2>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div class="liquid-glass rounded-3xl p-6 sm:p-8 space-y-3 shadow-md border border-white/80">
+          <div class="w-10 h-10 rounded-2xl bg-emerald-500/10 text-emerald-700 flex items-center justify-center">
+            <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+          </div>
+          <h3 class="text-base font-semibold text-slate-900">Autonomous ToD Arbitrage</h3>
+          <p class="text-xs text-slate-600 font-light leading-relaxed">
+            Predicts commercial facility demand and charges BESS storage during night off-peak rebate hours (₹3.50/kWh), discharging during peak surcharges (₹11.80/kWh).
+          </p>
+        </div>
+
+        <div class="liquid-glass rounded-3xl p-6 sm:p-8 space-y-3 shadow-md border border-white/80">
+          <div class="w-10 h-10 rounded-2xl bg-emerald-500/10 text-emerald-700 flex items-center justify-center">
+            <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10Z"/><path d="M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12"/></svg>
+          </div>
+          <h3 class="text-base font-semibold text-slate-900">CEA Grid Carbon Abatement</h3>
+          <p class="text-xs text-slate-600 font-light leading-relaxed">
+            Tracks India Central Electricity Authority 0.716 kg CO2/kWh baseline factor to displace coal-heavy peak electricity and generate audit-sealed SEBI BRSR reports.
+          </p>
+        </div>
+
+        <div class="liquid-glass rounded-3xl p-6 sm:p-8 space-y-3 shadow-md border border-white/80">
+          <div class="w-10 h-10 rounded-2xl bg-emerald-500/10 text-emerald-700 flex items-center justify-center">
+            <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+          </div>
+          <h3 class="text-base font-semibold text-slate-900">Predictive HVAC Pre-Cooling</h3>
+          <p class="text-xs text-slate-600 font-light leading-relaxed">
+            Leverages building thermal mass to pre-cool campus facilities with captive solar between 13:00–16:00, preventing chiller demand spikes during 18:00 evening tariff peaks.
+          </p>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <!-- ======================================================== -->
+  <!-- PAGE 2: BILL INGESTION & FACILITY CALIBRATION            -->
+  <!-- ======================================================== -->
+  <div id="page-ingest" class="hidden relative z-10 max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full my-auto space-y-12">
+    
+    <!-- SECTION 1: THE TAGLINE -->
+    <section class="text-center max-w-4xl mx-auto pt-6 pb-2">
+      <div class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-800 text-xs font-mono tracking-wider uppercase font-semibold mb-6">
+        <svg class="w-3.5 h-3.5 text-emerald-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/></svg>
+        Autonomous Energy & Tariff Intelligence
+      </div>
+
+      <h1 class="text-4xl sm:text-6xl font-light tracking-tight text-slate-900 leading-[1.15]">
+        Upload Your Utility Bill. <br />
+        <span class="font-semibold text-slate-950">
+          Uncover Instant Surcharge Leakage & Energy Audit in Seconds.
+        </span>
+      </h1>
+
+      <p class="mt-5 text-base sm:text-lg text-slate-600 font-light max-w-2xl mx-auto leading-relaxed">
+        Drop any commercial electricity bill below. Our OCR engine parses your regional Indian DISCOM tariff structure, extracts peak demand penalties, and produces an audit-grade decarbonization roadmap.
+      </p>
+
+      <div class="flex flex-wrap items-center justify-center gap-3 sm:gap-6 mt-6 text-xs font-mono text-slate-500">
+        <span class="flex items-center gap-1.5">
+          <svg class="w-4 h-4 text-emerald-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="m9 11 3 3L22 4"/></svg>
+          <span>Instant OCR Extraction</span>
+        </span>
+        <span>•</span>
+        <span class="flex items-center gap-1.5">
+          <svg class="w-4 h-4 text-emerald-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="m9 11 3 3L22 4"/></svg>
+          <span>ToD Peak Arbitrage Analysis</span>
+        </span>
+        <span>•</span>
+        <span class="flex items-center gap-1.5">
+          <svg class="w-4 h-4 text-emerald-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="m9 11 3 3L22 4"/></svg>
+          <span>SEBI BRSR & CEA 0.716 Compliance</span>
+        </span>
+      </div>
+    </section>
+
+    <!-- SECTION 2: BILL UPLOAD & EXTRACTION BLOCK -->
+    <section id="bill-upload-block" class="max-w-3xl mx-auto">
+      <div class="liquid-glass rounded-3xl p-6 sm:p-10 shadow-2xl border border-white/80 space-y-6">
+        
+        <div class="text-center space-y-1">
+          <span class="text-xs font-mono uppercase text-emerald-800 font-semibold tracking-wider">
+            Step 1 • Digital Bill Ingestion
+          </span>
+          <h2 class="text-xl sm:text-2xl font-semibold text-slate-900">
+            Upload Commercial Electricity Bill
+          </h2>
+          <p class="text-xs text-slate-500 font-light">
+            Accepts PDF, JPG, PNG from MSEDCL, BESCOM, Tata Power, BSES, TANGEDCO or any DISCOM
+          </p>
+        </div>
+
+        <!-- Upload Drop Zone -->
+        <div
+          id="drop-zone"
+          class="relative rounded-2xl border-2 border-dashed border-slate-300 hover:border-emerald-500 hover:bg-emerald-50/30 bg-white/60 p-8 sm:p-12 text-center transition-all cursor-pointer"
+        >
+          <input
+            id="file-input"
+            type="file"
+            accept=".pdf,.png,.jpg,.jpeg"
+            class="hidden"
+          />
+
+          <!-- Default Idle Content -->
+          <div id="upload-idle-state" class="space-y-3">
+            <div class="w-14 h-14 rounded-2xl bg-emerald-500/10 text-emerald-700 mx-auto flex items-center justify-center">
+              <svg class="w-7 h-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242"/><path d="M12 12v9"/><path d="m16 16-4-4-4 4"/></svg>
+            </div>
+            <div>
+              <span class="text-sm font-semibold text-slate-900 block">
+                Click to browse or drag and drop your electricity bill
+              </span>
+              <span class="text-xs text-slate-500 block mt-1 font-light">
+                PDF or High-Resolution image (up to 25MB)
+              </span>
+            </div>
+            <div class="inline-block px-3 py-1 rounded-full bg-slate-100 text-[11px] font-mono text-slate-600">
+              ⚡ Client-side parsing • Bank-grade encrypted
+            </div>
+          </div>
+
+          <!-- Extraction Progress State (Hidden initially) -->
+          <div id="upload-progress-state" class="hidden space-y-4 py-4">
+            <div class="w-14 h-14 rounded-2xl bg-emerald-500/10 text-emerald-700 mx-auto flex items-center justify-center animate-pulse">
+              <svg class="w-7 h-7 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+            </div>
+            <div class="space-y-1">
+              <div id="extract-filename" class="text-sm font-semibold text-slate-900 font-mono">
+                Scraping bill...
+              </div>
+              <div id="extract-status" class="text-xs text-emerald-700 font-mono">
+                Ingesting bill raster and OCR tokenization...
+              </div>
+            </div>
+            <div class="w-64 max-w-full mx-auto h-2 bg-slate-200 rounded-full overflow-hidden">
+              <div
+                id="extract-prog-bar"
+                class="h-full bg-emerald-500 rounded-full transition-all duration-300"
+                style="width: 15%;"
+              ></div>
+            </div>
+            <div id="extract-pct" class="text-[11px] font-mono text-slate-400">
+              15% processed
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Quick Sample Test Bills -->
+        <div class="pt-2 space-y-3 border-t border-slate-900/10">
+          <div class="flex items-center justify-between text-xs">
+            <span class="font-mono text-slate-500 uppercase tracking-wider font-semibold">
+              Or Test Immediately With Sample Utility Bills:
+            </span>
+            <span class="text-emerald-700 font-mono text-[11px] hidden sm:inline">
+              Click any bill to auto-extract
+            </span>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <button
+              type="button"
+              id="sample-msedcl"
+              class="p-3.5 rounded-2xl bg-white/80 hover:bg-slate-900 hover:text-white border border-slate-200 hover:border-slate-900 text-left transition-all duration-200 cursor-pointer shadow-sm group active:scale-95"
+            >
+              <div class="flex items-center gap-2 mb-1">
+                <svg class="w-4 h-4 text-emerald-600 group-hover:text-emerald-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></svg>
+                <span class="text-xs font-semibold truncate">MSEDCL HT-1 Commercial</span>
+              </div>
+              <div class="text-[11px] opacity-75 font-mono truncate">Pune IT Park Campus</div>
+              <div class="text-[10px] font-mono text-emerald-700 group-hover:text-emerald-300 mt-1 font-semibold">
+                ₹8.45 Lakhs • 550 kW
+              </div>
+            </button>
+
+            <button
+              type="button"
+              id="sample-bescom"
+              class="p-3.5 rounded-2xl bg-white/80 hover:bg-slate-900 hover:text-white border border-slate-200 hover:border-slate-900 text-left transition-all duration-200 cursor-pointer shadow-sm group active:scale-95"
+            >
+              <div class="flex items-center gap-2 mb-1">
+                <svg class="w-4 h-4 text-emerald-600 group-hover:text-emerald-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></svg>
+                <span class="text-xs font-semibold truncate">BESCOM HT-2A Campus</span>
+              </div>
+              <div class="text-[11px] opacity-75 font-mono truncate">Bengaluru Tech Hub</div>
+              <div class="text-[10px] font-mono text-emerald-700 group-hover:text-emerald-300 mt-1 font-semibold">
+                ₹5.20 Lakhs • 380 kW
+              </div>
+            </button>
+
+            <button
+              type="button"
+              id="sample-tatapower"
+              class="p-3.5 rounded-2xl bg-white/80 hover:bg-slate-900 hover:text-white border border-slate-200 hover:border-slate-900 text-left transition-all duration-200 cursor-pointer shadow-sm group active:scale-95"
+            >
+              <div class="flex items-center gap-2 mb-1">
+                <svg class="w-4 h-4 text-emerald-600 group-hover:text-emerald-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></svg>
+                <span class="text-xs font-semibold truncate">Tata Power Industrial</span>
+              </div>
+              <div class="text-[11px] opacity-75 font-mono truncate">Gurugram Industrial Hub</div>
+              <div class="text-[10px] font-mono text-emerald-700 group-hover:text-emerald-300 mt-1 font-semibold">
+                ₹14.85 Lakhs • 920 kW
+              </div>
+            </button>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- SECTION 3: EXTRACTED INFORMATION & CONFIRMATION FORM -->
+    <section id="facility-info-section" class="max-w-4xl mx-auto pt-6 scroll-mt-24">
+      <form id="extracted-info-form" class="liquid-glass rounded-3xl p-6 sm:p-10 shadow-2xl border border-white/80 space-y-8">
+        
+        <!-- Header -->
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-900/10 pb-6">
+          <div>
+            <div class="flex items-center gap-2">
+              <span class="text-xs font-mono uppercase text-emerald-800 font-semibold tracking-wider">
+                Step 2 • Scraped Data Review & Calibration
+              </span>
+              <span id="scraped-badge" class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-800 text-[10px] font-mono font-semibold">
+                ✓ Auto-Scraped
+              </span>
+            </div>
+            <h2 class="text-2xl font-semibold text-slate-900 mt-1">
+              Verify Extracted Information
+            </h2>
+            <p class="text-xs text-slate-500 font-light mt-0.5">
+              Review fields scraped from your bill. Fill in any hardware assets not present in the utility statement.
+            </p>
+          </div>
+
+          <div class="text-right font-mono text-xs text-slate-500">
+            <span>Bill Value: </span>
+            <strong id="badge-bill-amount" class="text-slate-900 text-sm block sm:inline">
+              ₹8.45 Lakhs
+            </strong>
+          </div>
+        </div>
+
+        <!-- BLOCK A: AUTO-EXTRACTED FIELDS -->
+        <div class="space-y-4">
+          <div class="flex items-center gap-2">
+            <svg class="w-4 h-4 text-emerald-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><path d="m9 15 2 2 4-4"/></svg>
+            <h3 class="text-xs font-semibold text-slate-900 uppercase font-mono tracking-wider">
+              A. Extracted From Electricity Bill
+            </h3>
+            <span class="text-[10px] font-mono text-emerald-700 bg-emerald-500/10 px-2 py-0.5 rounded ml-auto">
+              Auto-filled via OCR
+            </span>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+            <div>
+              <label class="block text-[11px] font-mono text-slate-500 uppercase mb-1">
+                Facility / Consumer Name
+              </label>
+              <input
+                id="form-facility-name"
+                type="text"
+                required
+                value="Pune IT Park (Campus West)"
+                class="w-full px-3.5 py-2.5 rounded-xl text-xs bg-emerald-50/40 border border-emerald-300/60 text-slate-900 font-sans focus:outline-none focus:ring-2 focus:ring-emerald-500 font-medium"
+              />
+            </div>
+
+            <div>
+              <label class="block text-[11px] font-mono text-slate-500 uppercase mb-1">
+                Consumer / Account No.
+              </label>
+              <input
+                id="form-consumer-no"
+                type="text"
+                value="084729104829"
+                class="w-full px-3.5 py-2.5 rounded-xl text-xs bg-emerald-50/40 border border-emerald-300/60 text-slate-900 font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              />
+            </div>
+
+            <div>
+              <label class="block text-[11px] font-mono text-slate-500 uppercase mb-1">
+                DISCOM / Tariff Regime
+              </label>
+              <input
+                id="form-discom"
+                type="text"
+                required
+                value="MSEDCL (Maharashtra) • HT-1 Commercial"
+                class="w-full px-3.5 py-2.5 rounded-xl text-xs bg-emerald-50/40 border border-emerald-300/60 text-slate-900 font-sans focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              />
+            </div>
+
+            <div>
+              <label class="block text-[11px] font-mono text-slate-500 uppercase mb-1">
+                Monthly Bill Amount (₹)
+              </label>
+              <input
+                id="form-bill-amount"
+                type="number"
+                required
+                value="845620"
+                class="w-full px-3.5 py-2.5 rounded-xl text-xs bg-emerald-50/40 border border-emerald-300/60 text-slate-900 font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500 font-semibold"
+              />
+            </div>
+
+            <div>
+              <label class="block text-[11px] font-mono text-slate-500 uppercase mb-1">
+                Sanctioned Demand (kW)
+              </label>
+              <input
+                id="form-demand"
+                type="number"
+                required
+                value="550"
+                class="w-full px-3.5 py-2.5 rounded-xl text-xs bg-emerald-50/40 border border-emerald-300/60 text-slate-900 font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              />
+            </div>
+
+            <div>
+              <label class="block text-[11px] font-mono text-slate-500 uppercase mb-1">
+                Monthly Billed Units (kWh)
+              </label>
+              <input
+                id="form-units"
+                type="number"
+                value="94200"
+                class="w-full px-3.5 py-2.5 rounded-xl text-xs bg-emerald-50/40 border border-emerald-300/60 text-slate-900 font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              />
+            </div>
+
+            <div>
+              <label class="block text-[11px] font-mono text-slate-500 uppercase mb-1">
+                Peak ToD Surcharge Paid (₹)
+              </label>
+              <input
+                id="form-peak-surcharge"
+                type="number"
+                value="184200"
+                class="w-full px-3.5 py-2.5 rounded-xl text-xs bg-emerald-50/40 border border-emerald-300/60 text-emerald-900 font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500 font-semibold"
+              />
+            </div>
+
+            <div>
+              <label class="block text-[11px] font-mono text-slate-500 uppercase mb-1">
+                Billed Power Factor
+              </label>
+              <input
+                id="form-pf"
+                type="text"
+                value="0.98"
+                class="w-full px-3.5 py-2.5 rounded-xl text-xs bg-emerald-50/40 border border-emerald-300/60 text-slate-900 font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              />
+            </div>
+
+            <div>
+              <label class="block text-[11px] font-mono text-slate-500 uppercase mb-1">
+                Billing Cycle
+              </label>
+              <input
+                id="form-cycle"
+                type="text"
+                value="August 2026"
+                class="w-full px-3.5 py-2.5 rounded-xl text-xs bg-emerald-50/40 border border-emerald-300/60 text-slate-900 font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              />
+            </div>
+          </div>
+        </div>
+
+        <!-- BLOCK B: UNRETRIEVABLE FIELDS (LEFT BLANK AS REQUESTED) -->
+        <div class="space-y-4 pt-4 border-t border-slate-900/10">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+            <div class="flex items-center gap-2">
+              <svg class="w-4 h-4 text-amber-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+              <h3 class="text-xs font-semibold text-slate-900 uppercase font-mono tracking-wider">
+                B. On-Site Assets & Calibration (Fill In Manually)
+              </h3>
+            </div>
+            <span class="text-[10px] font-mono text-amber-800 bg-amber-500/10 px-2 py-0.5 rounded">
+              Not listed on utility bills • Leave 0 or blank if none
+            </span>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div>
+              <label class="block text-[11px] font-mono text-slate-500 uppercase mb-1 flex items-center justify-between">
+                <span>Rooftop Solar PV (kWp)</span>
+                <span class="text-[10px] text-slate-400 font-normal">Optional</span>
+              </label>
+              <input
+                id="form-solar"
+                type="number"
+                min="0"
+                step="10"
+                placeholder="e.g. 250 (leave blank if 0)"
+                class="w-full px-3.5 py-2.5 rounded-xl text-xs bg-white border border-slate-300 text-slate-900 font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              />
+            </div>
+
+            <div>
+              <label class="block text-[11px] font-mono text-slate-500 uppercase mb-1 flex items-center justify-between">
+                <span>Battery BESS Storage (kWh)</span>
+                <span class="text-[10px] text-slate-400 font-normal">Optional</span>
+              </label>
+              <input
+                id="form-bess"
+                type="number"
+                min="0"
+                step="20"
+                placeholder="e.g. 150 (leave blank if 0)"
+                class="w-full px-3.5 py-2.5 rounded-xl text-xs bg-white border border-slate-300 text-slate-900 font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              />
+            </div>
+
+            <div>
+              <label class="block text-[11px] font-mono text-slate-500 uppercase mb-1 flex items-center justify-between">
+                <span>Facility Area (sq. ft.)</span>
+                <span class="text-[10px] text-slate-400 font-normal">Optional</span>
+              </label>
+              <input
+                id="form-area"
+                type="text"
+                placeholder="e.g. 150,000 sq ft"
+                class="w-full px-3.5 py-2.5 rounded-xl text-xs bg-white border border-slate-300 text-slate-900 font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              />
+            </div>
+          </div>
+
+          <!-- Subsystem Toggles -->
+          <div class="pt-2">
+            <span class="block text-[11px] font-mono text-slate-500 uppercase mb-2">
+              Connected Building Subsystems
+            </span>
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-xs font-mono">
+              <label class="flex items-center gap-2 p-2.5 rounded-xl border bg-emerald-500/10 border-emerald-500/30 text-emerald-900 font-semibold cursor-pointer">
+                <input id="cb-hvac" type="checkbox" checked class="accent-emerald-600 w-3.5 h-3.5" />
+                <span class="truncate">Central HVAC Chiller</span>
+              </label>
+              <label class="flex items-center gap-2 p-2.5 rounded-xl border bg-emerald-500/10 border-emerald-500/30 text-emerald-900 font-semibold cursor-pointer">
+                <input id="cb-inverter" type="checkbox" checked class="accent-emerald-600 w-3.5 h-3.5" />
+                <span class="truncate">Modbus Inverters</span>
+              </label>
+              <label class="flex items-center gap-2 p-2.5 rounded-xl border bg-white/60 border-slate-200 text-slate-600 cursor-pointer">
+                <input id="cb-ev" type="checkbox" class="accent-emerald-600 w-3.5 h-3.5" />
+                <span class="truncate">EV Fleet Chargers</span>
+              </label>
+              <label class="flex items-center gap-2 p-2.5 rounded-xl border bg-white/60 border-slate-200 text-slate-600 cursor-pointer">
+                <input id="cb-dg" type="checkbox" class="accent-emerald-600 w-3.5 h-3.5" />
+                <span class="truncate">Backup Diesel DG</span>
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <!-- Action Submit Button -->
+        <div class="pt-6 border-t border-slate-900/10 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div class="text-xs text-slate-500 font-mono">
+            <span>Detected ToD Peak Exposure: </span>
+            <strong id="badge-annual-exposure" class="text-slate-900 font-semibold">
+              ₹22.10 Lakhs / year
+            </strong>
+          </div>
+
+          <button
+            type="submit"
+            class="w-full sm:w-auto px-8 py-4 rounded-full bg-slate-900 hover:bg-slate-800 text-white font-semibold text-xs sm:text-sm tracking-wide transition-all shadow-xl hover:shadow-2xl hover:scale-105 active:scale-95 flex items-center justify-center gap-3 cursor-pointer group"
+          >
+            <span>Generate Full Energy & Tariff Audit Report</span>
+            <svg class="w-4 h-4 text-emerald-400 group-hover:translate-x-1.5 transition-transform" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+          </button>
+        </div>
+
+      </form>
+    </section>
+
+  </div>
+
+  <!-- ======================================================== -->
+  <!-- PAGE 3: DEDICATED AUDIT REPORT PAGE                      -->
+  <!-- ======================================================== -->
+  <div id="page-audit" class="hidden relative z-10 max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full my-auto space-y-10">
+    
+    <!-- Top Controls Bar -->
+    <div class="liquid-glass rounded-2xl p-4 sm:p-5 flex flex-wrap items-center justify-between gap-4 shadow-xl border border-white/80">
+      <div class="flex items-center gap-3">
+        <button
+          onclick="navigateToPage('ingest')"
+          class="px-4 py-2 rounded-xl bg-slate-900/5 hover:bg-slate-900 hover:text-white text-slate-700 text-xs font-mono transition-all flex items-center gap-2 cursor-pointer active:scale-95"
+        >
+          <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+          <span>Upload Another Bill / New Audit</span>
+        </button>
+
+        <div class="hidden sm:inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-800 text-[11px] font-mono uppercase font-semibold">
+          <svg class="w-3.5 h-3.5 text-emerald-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          SEBI BRSR & CEA Verified Audit
+        </div>
+      </div>
+
+      <div class="flex items-center gap-2">
+        <button
+          onclick="navigateToPage('console')"
+          class="px-4 py-2.5 rounded-full border border-emerald-500/40 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-900 font-semibold text-xs font-mono transition-all flex items-center gap-1.5 cursor-pointer active:scale-95"
+        >
+          <svg class="w-3.5 h-3.5 text-emerald-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+          <span>Live Grid Console →</span>
+        </button>
+
+        <button
+          onclick="openModal()"
+          class="px-5 py-2.5 rounded-full bg-slate-900 hover:bg-slate-800 text-white font-semibold text-xs font-mono transition-all shadow-md flex items-center gap-2 cursor-pointer active:scale-95"
+        >
+          <svg class="w-3.5 h-3.5 text-emerald-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          <span>Download Official Audit (PDF)</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- AUDIT REPORT CERTIFICATE HEADER -->
+    <div id="audit-summary" class="liquid-glass rounded-3xl p-6 sm:p-10 shadow-2xl border border-white/80 relative overflow-hidden space-y-6">
+      <div class="absolute top-0 right-0 w-80 h-80 bg-emerald-500/5 rounded-bl-full pointer-events-none"></div>
+
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-900/10 pb-6">
+        <div>
+          <div class="inline-flex items-center gap-2 text-xs font-mono uppercase text-emerald-800 tracking-wider font-semibold">
+            <svg class="w-4 h-4 text-emerald-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 11 3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+            Comprehensive Energy, Tariff & Carbon Audit Report
+          </div>
+          <h1 id="audit-facility-name" class="text-3xl sm:text-4xl font-semibold text-slate-900 tracking-tight mt-1">
+            Pune IT Park (Campus West)
+          </h1>
+          <div class="flex flex-wrap items-center gap-3 text-xs font-mono text-slate-500 mt-2">
+            <span>Consumer ID: <strong id="audit-consumer-no" class="text-slate-900">084729104829</strong></span>
+            <span>•</span>
+            <span>Tariff: <strong id="audit-discom" class="text-slate-900">MSEDCL HT-1 Commercial</strong></span>
+            <span>•</span>
+            <span>Billing Cycle: <strong id="audit-cycle" class="text-slate-900">August 2026</strong></span>
+          </div>
+        </div>
+
+        <div class="flex flex-col items-start sm:items-end justify-center bg-white/70 sm:bg-transparent p-4 sm:p-0 rounded-2xl border sm:border-0 border-slate-200">
+          <span class="text-[10px] font-mono uppercase text-slate-400 font-semibold tracking-wider">
+            Facility Efficiency Rating
+          </span>
+          <div class="text-3xl font-light font-mono text-slate-900 mt-0.5">
+            <span class="font-bold text-amber-600">62</span> / 100
+          </div>
+          <span class="text-[11px] font-mono text-amber-700 bg-amber-500/10 px-2 py-0.5 rounded mt-1 font-semibold">
+            Grade C • High Tariff Leakage Detected
+          </span>
+        </div>
+      </div>
+
+      <!-- 4 Top KPI Metric Cards -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+        <div class="p-4 rounded-2xl bg-white/80 border border-slate-200 space-y-1">
+          <span class="text-[10px] font-mono uppercase text-slate-400 font-semibold block">
+            Annual Utility Baseline
+          </span>
+          <div id="kpi-baseline" class="text-xl font-mono font-semibold text-slate-900">
+            ₹1.01 Cr
+          </div>
+          <span id="kpi-baseline-desc" class="text-[11px] text-slate-500 font-light block">
+            Based on current monthly bill
+          </span>
+        </div>
+
+        <div class="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 space-y-1">
+          <span class="text-[10px] font-mono uppercase text-amber-900 font-semibold block flex items-center justify-between">
+            <span>Identified Tariff Leakage</span>
+            <svg class="w-3.5 h-3.5 text-amber-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          </span>
+          <div id="kpi-leakage" class="text-xl font-mono font-semibold text-amber-950">
+            ₹22.10 Lakhs
+          </div>
+          <span class="text-[11px] text-amber-800 font-light block">
+            Time-of-Day evening peak penalties (17-22h)
+          </span>
+        </div>
+
+        <div class="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 space-y-1">
+          <span class="text-[10px] font-mono uppercase text-emerald-900 font-semibold block flex items-center justify-between">
+            <span>Net Achievable Savings</span>
+            <svg class="w-3.5 h-3.5 text-emerald-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 18 13.5 8.5 8.5 13.5 1 6"/><polyline points="17 18 23 18 23 12"/></svg>
+          </span>
+          <div id="kpi-savings" class="text-xl font-mono font-semibold text-emerald-950">
+            ₹31.80 Lakhs / yr
+          </div>
+          <span id="kpi-savings-pct" class="text-[11px] text-emerald-800 font-light block">
+            31.4% net reduction with peak shaving
+          </span>
+        </div>
+
+        <div class="p-4 rounded-2xl bg-slate-900 text-white space-y-1">
+          <span class="text-[10px] font-mono uppercase text-slate-400 font-semibold block flex items-center justify-between">
+            <span>Carbon Abatement</span>
+            <svg class="w-3.5 h-3.5 text-emerald-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10Z"/><path d="M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12"/></svg>
+          </span>
+          <div id="kpi-carbon" class="text-xl font-mono font-semibold text-white">
+            342.5 tCO2e
+          </div>
+          <span class="text-[11px] text-slate-400 font-light block">
+            Displaced fossil peakers (CEA factor)
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <!-- FORENSIC BILL LINE-ITEM AUDIT TABLE -->
+    <div id="audit-breakdown" class="liquid-glass rounded-3xl p-6 sm:p-8 shadow-xl border border-white/80 space-y-5">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-900/10 pb-4">
+        <div>
+          <span class="text-[11px] font-mono uppercase text-emerald-800 font-semibold tracking-wider">
+            Audit Breakdown • Forensic Line-Item Analysis
+          </span>
+          <h2 class="text-xl font-semibold text-slate-900">
+            Where Your Electricity Bill is Leaking Money
+          </h2>
+        </div>
+        <span class="text-xs font-mono text-slate-500">
+          Source: Extracted DISCOM Tariff Schedule
+        </span>
+      </div>
+
+      <div class="overflow-x-auto">
+        <table class="w-full text-left text-xs font-mono border-collapse">
+          <thead>
+            <tr class="border-b border-slate-300 text-slate-500 uppercase text-[10px] tracking-wider">
+              <th class="py-3 px-3">Billed Tariff Component</th>
+              <th class="py-3 px-3">Current Bill Value</th>
+              <th class="py-3 px-3">Audit Finding & Cost Inefficiency</th>
+              <th class="py-3 px-3">Optimized With WattHacks</th>
+              <th class="py-3 px-3 text-right">Potential Savings</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-200 text-slate-700">
+            <tr class="hover:bg-amber-50/50 transition-colors">
+              <td class="py-3.5 px-3 font-semibold text-slate-900">
+                Time-of-Day (ToD) Peak Surcharges
+                <span class="block text-[10px] text-slate-400 font-normal">17:00 – 22:00 evening tariff window</span>
+              </td>
+              <td id="tbl-surcharge-val" class="py-3.5 px-3 font-semibold text-amber-700">₹1,84,200/mo</td>
+              <td class="py-3.5 px-3 text-slate-600 font-sans text-xs">
+                <span class="inline-block px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 font-mono text-[10px] font-semibold mr-1.5">Critical Leakage</span>
+                Grid draw during +₹4.60/kWh penalty hours without battery substitution.
+              </td>
+              <td id="tbl-surcharge-opt" class="py-3.5 px-3 font-semibold text-emerald-700">₹40,524/mo</td>
+              <td id="tbl-surcharge-sav" class="py-3.5 px-3 text-right font-bold text-emerald-700">-₹1,43,676/mo</td>
+            </tr>
+
+            <tr class="hover:bg-slate-50/50 transition-colors">
+              <td class="py-3.5 px-3 font-semibold text-slate-900">
+                Fixed Contract Demand Charges
+                <span class="block text-[10px] text-slate-400 font-normal">Contracted Sanctioned Demand</span>
+              </td>
+              <td id="tbl-demand-val" class="py-3.5 px-3 font-semibold text-slate-800">₹2,69,500/mo</td>
+              <td class="py-3.5 px-3 text-slate-600 font-sans text-xs">
+                <span class="inline-block px-1.5 py-0.5 rounded bg-blue-100 text-blue-800 font-mono text-[10px] font-semibold mr-1.5">Demand Spike Risk</span>
+                Occasional chiller startup peaks risk exceeding sanctioned threshold (150% penalty).
+              </td>
+              <td id="tbl-demand-opt" class="py-3.5 px-3 font-semibold text-slate-800">₹2,25,500/mo</td>
+              <td id="tbl-demand-sav" class="py-3.5 px-3 text-right font-bold text-emerald-700">-₹44,000/mo</td>
+            </tr>
+
+            <tr class="hover:bg-slate-50/50 transition-colors">
+              <td class="py-3.5 px-3 font-semibold text-slate-900">
+                Base Daytime Energy Charges
+                <span class="block text-[10px] text-slate-400 font-normal">Daytime energy consumption</span>
+              </td>
+              <td id="tbl-energy-val" class="py-3.5 px-3 font-semibold text-slate-800">₹3,12,000/mo</td>
+              <td class="py-3.5 px-3 text-slate-600 font-sans text-xs">
+                Midday cooling load draws 100% grid power during available solar insolation windows.
+              </td>
+              <td id="tbl-energy-opt" class="py-3.5 px-3 font-semibold text-slate-800">₹2,42,000/mo</td>
+              <td id="tbl-energy-sav" class="py-3.5 px-3 text-right font-bold text-emerald-700">-₹70,000/mo</td>
+            </tr>
+
+            <tr class="hover:bg-slate-50/50 transition-colors">
+              <td class="py-3.5 px-3 font-semibold text-slate-900">
+                Power Factor Incentive / Rebate
+                <span class="block text-[10px] text-slate-400 font-normal">Recorded PF 0.98</span>
+              </td>
+              <td class="py-3.5 px-3 font-semibold text-slate-800">₹0 (Neutral)</td>
+              <td class="py-3.5 px-3 text-slate-600 font-sans text-xs">
+                PF is acceptable but does not achieve DISCOM maximum 7% prompt rebate threshold (PF &gt; 0.995).
+              </td>
+              <td class="py-3.5 px-3 font-semibold text-emerald-700">-₹12,400 Rebate</td>
+              <td class="py-3.5 px-3 text-right font-bold text-emerald-700">-₹12,400/mo</td>
+            </tr>
+
+            <tr class="hover:bg-slate-50/50 transition-colors">
+              <td class="py-3.5 px-3 font-semibold text-slate-900">
+                Electricity Duty & Fuel Surcharges
+                <span class="block text-[10px] text-slate-400 font-normal">Regulatory pass-through surcharges</span>
+              </td>
+              <td id="tbl-tax-val" class="py-3.5 px-3 font-semibold text-slate-800">₹79,920/mo</td>
+              <td class="py-3.5 px-3 text-slate-600 font-sans text-xs">
+                State taxes scale directly with gross grid kWh draw.
+              </td>
+              <td id="tbl-tax-opt" class="py-3.5 px-3 font-semibold text-slate-800">₹58,400/mo</td>
+              <td id="tbl-tax-sav" class="py-3.5 px-3 text-right font-bold text-emerald-700">-₹21,520/mo</td>
+            </tr>
+          </tbody>
+          <tfoot>
+            <tr class="border-t-2 border-slate-900 font-semibold bg-emerald-50/60">
+              <td class="py-3.5 px-3 text-slate-900">TOTAL MONTHLY AUDIT RESULT</td>
+              <td id="tbl-total-cur" class="py-3.5 px-3 text-slate-900 font-bold">₹8,45,620</td>
+              <td class="py-3.5 px-3 text-xs font-sans text-slate-600">Net monthly bill reduction across all components</td>
+              <td id="tbl-total-opt" class="py-3.5 px-3 text-emerald-800 font-bold">₹5,54,024</td>
+              <td id="tbl-total-sav" class="py-3.5 px-3 text-right text-emerald-800 font-bold text-sm">-₹2,91,596 / mo</td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    </div>
+
+    <!-- RECOMMENDED SIZING & DISPATCH STRATEGY -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+      
+      <!-- Recommended Hardware Sizing -->
+      <div class="liquid-glass rounded-3xl p-6 sm:p-8 shadow-xl border border-white/80 space-y-4">
+        <div class="flex items-center gap-2">
+          <svg class="w-4 h-4 text-emerald-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+          <h3 class="text-sm font-semibold text-slate-900 uppercase font-mono tracking-wider">
+            Recommended Asset Capacity
+          </h3>
+        </div>
+        <p class="text-xs text-slate-600 font-light">
+          Engineered specifically to eliminate the ToD surcharge extracted from your bill:
+        </p>
+
+        <div class="space-y-3 pt-2">
+          <div class="p-3.5 rounded-2xl bg-white/80 border border-slate-200 flex items-center justify-between">
+            <div>
+              <span class="text-xs font-semibold text-slate-900 block">Recommended BESS Battery</span>
+              <span class="text-[11px] text-slate-500 font-mono">LFP chemistry • 0.5C discharge rate</span>
+            </div>
+            <strong id="rec-bess" class="text-base font-mono text-emerald-700">
+              200 kWh
+            </strong>
+          </div>
+
+          <div class="p-3.5 rounded-2xl bg-white/80 border border-slate-200 flex items-center justify-between">
+            <div>
+              <span class="text-xs font-semibold text-slate-900 block">Recommended Rooftop Solar PV</span>
+              <span class="text-[11px] text-slate-500 font-mono">Midday self-consumption</span>
+            </div>
+            <strong id="rec-solar" class="text-base font-mono text-emerald-700">
+              300 kWp
+            </strong>
+          </div>
+
+          <div class="p-3.5 rounded-2xl bg-slate-900 text-white flex items-center justify-between">
+            <div>
+              <span class="text-xs font-semibold text-white block">WattHacks Software Payback</span>
+              <span class="text-[11px] text-slate-400 font-mono">₹14,999/mo subscription vs savings</span>
+            </div>
+            <strong class="text-base font-mono text-brand-apricot">
+              0.6 Months
+            </strong>
+          </div>
+        </div>
+      </div>
+
+      <!-- 24h Autonomous Dispatch Schedule -->
+      <div id="audit-dispatch" class="liquid-glass rounded-3xl p-6 sm:p-8 shadow-xl border border-white/80 space-y-4">
+        <div class="flex items-center gap-2">
+          <svg class="w-4 h-4 text-emerald-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          <h3 class="text-sm font-semibold text-slate-900 uppercase font-mono tracking-wider">
+            24-Hour AI Dispatch Strategy
+          </h3>
+        </div>
+        <p class="text-xs text-slate-600 font-light">
+          Automated schedule generated from your DISCOM tariff windows:
+        </p>
+
+        <div class="space-y-2.5 font-mono text-xs pt-1">
+          <div class="p-2.5 rounded-xl bg-blue-500/10 border border-blue-500/20 text-blue-900 flex items-center justify-between">
+            <div>
+              <strong>00:00 – 06:00 • Off-Peak Night Arbitrage</strong>
+              <span class="block text-[10px] text-blue-700 font-sans">Charge BESS at off-peak rebate tariff (₹3.50/kWh)</span>
+            </div>
+            <span class="text-xs font-bold text-blue-800">CHARGE</span>
+          </div>
+
+          <div class="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-900 flex items-center justify-between">
+            <div>
+              <strong>09:00 – 16:00 • Solar Peak & Pre-Cooling</strong>
+              <span class="block text-[10px] text-amber-700 font-sans">Pre-cool building HVAC thermal mass with captive solar</span>
+            </div>
+            <span class="text-xs font-bold text-amber-800">SOLAR LOAD</span>
+          </div>
+
+          <div class="p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-900 flex items-center justify-between">
+            <div>
+              <strong>17:00 – 22:00 • Peak Surcharge Elimination</strong>
+              <span class="block text-[10px] text-emerald-700 font-sans">Discharge BESS directly to zero out grid peak penalty draw</span>
+            </div>
+            <span class="text-xs font-bold text-emerald-800">DISCHARGE</span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- SEBI BRSR CORE COMPLIANCE DISCLOSURE -->
+    <div class="liquid-glass rounded-3xl p-6 sm:p-8 shadow-xl border border-white/80 space-y-4">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-900/10 pb-4">
+        <div>
+          <span class="text-[11px] font-mono uppercase text-emerald-800 font-semibold tracking-wider">
+            ESG Regulatory Governance
+          </span>
+          <h2 class="text-xl font-semibold text-slate-900">
+            SEBI BRSR Core Environmental Audit Statement
+          </h2>
+        </div>
+        <span class="text-xs font-mono text-emerald-800 bg-emerald-500/10 px-2.5 py-1 rounded-full font-semibold">
+          India CEA 0.716 kg CO2/kWh Factor
+        </span>
+      </div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs font-mono pt-2">
+        <div class="p-4 rounded-2xl bg-white/70 border border-slate-200">
+          <span class="text-slate-400 block text-[10px] uppercase">Scope 2 Displaced Emissions</span>
+          <strong id="audit-scope2" class="text-slate-900 text-lg block mt-1">287.7 tCO2e / yr</strong>
+          <span class="text-[11px] text-slate-500 font-sans">Grid electricity substitution</span>
+        </div>
+
+        <div class="p-4 rounded-2xl bg-white/70 border border-slate-200">
+          <span class="text-slate-400 block text-[10px] uppercase">Scope 1 Diesel DG Run-Hour Avoidance</span>
+          <strong id="audit-scope1" class="text-slate-900 text-lg block mt-1">54.8 tCO2e / yr</strong>
+          <span class="text-[11px] text-slate-500 font-sans">Direct backup fossil offset</span>
+        </div>
+
+        <div class="p-4 rounded-2xl bg-white/70 border border-slate-200">
+          <span class="text-slate-400 block text-[10px] uppercase">Audit Hash Verification</span>
+          <strong class="text-slate-900 text-sm block mt-1 truncate">SHA256: 8f94...e92a</strong>
+          <span class="text-[11px] text-slate-500 font-sans">Cryptographically sealed log</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- BOTTOM ACTION BAR -->
+    <div class="liquid-glass rounded-2xl p-6 shadow-xl border border-white/80 flex flex-col sm:flex-row items-center justify-between gap-4">
+      <div>
+        <h4 class="text-sm font-semibold text-slate-900">
+          Ready to deploy WattHacks Autonomous Dispatch?
+        </h4>
+        <p class="text-xs text-slate-500 font-light mt-0.5">
+          Connect your building meters via Modbus/BACnet in under 15 minutes.
+        </p>
+      </div>
+
+      <div class="flex flex-wrap items-center gap-3">
+        <button
+          onclick="navigateToPage('console')"
+          class="px-6 py-3 rounded-full bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs font-mono transition-all shadow-md active:scale-95 cursor-pointer flex items-center gap-2"
+        >
+          <svg class="w-3.5 h-3.5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+          <span>Launch Live Grid Console →</span>
+        </button>
+
+        <button
+          onclick="openModal()"
+          class="px-6 py-3 rounded-full bg-slate-900 hover:bg-slate-800 text-white font-semibold text-xs font-mono transition-all shadow-md active:scale-95 cursor-pointer flex items-center gap-2"
+        >
+          <svg class="w-3.5 h-3.5 text-emerald-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          <span>Download Audit PDF</span>
+        </button>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ======================================================== -->
+  <!-- PAGE 4: LIVE OPERATIONAL GRID CONSOLE                    -->
+  <!-- ======================================================== -->
+  <div id="page-console" class="hidden relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-12 py-8 w-full my-auto space-y-8">
+    
+    <!-- Top Console Header -->
+    <div class="liquid-glass rounded-2xl p-4 sm:p-6 flex flex-wrap items-center justify-between gap-4 shadow-xl border border-white/80">
+      <div class="flex items-center gap-4">
+        <button
+          onclick="navigateToPage('home')"
+          class="px-3.5 py-2 rounded-xl bg-slate-900/5 hover:bg-slate-900 hover:text-white text-slate-700 text-xs font-mono transition-all flex items-center gap-1.5 cursor-pointer active:scale-95"
+        >
+          ← Home
+        </button>
+        <div>
+          <div class="flex items-center gap-2">
+            <span class="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
+            <span class="text-xs font-mono text-emerald-800 font-semibold uppercase">Edge Modbus Node Connected</span>
+          </div>
+          <h2 class="text-lg sm:text-xl font-bold text-slate-900 font-mono">
+            Autonomous Grid Intelligence Console • <span id="console-node-name">Pune IT Park West</span>
+          </h2>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-3">
+        <button
+          onclick="navigateToPage('ingest')"
+          class="px-4 py-2 rounded-full border border-slate-300 bg-white hover:bg-slate-50 text-slate-800 text-xs font-mono transition-all cursor-pointer"
+        >
+          Upload New Bill ↑
+        </button>
+        <button
+          onclick="navigateToPage('audit')"
+          class="px-4 py-2 rounded-full bg-slate-900 text-white hover:bg-slate-800 text-xs font-mono transition-all cursor-pointer"
+        >
+          View Full Audit 📋
+        </button>
+      </div>
+    </div>
+
+    <!-- Real-time Telemetry KPI Cards -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div class="liquid-glass rounded-2xl p-5 border border-white/80 space-y-1">
+        <span class="text-[10px] font-mono uppercase text-slate-400 font-semibold block">Net Active Grid Draw</span>
+        <div class="text-2xl font-mono font-bold text-slate-900 flex items-center gap-2">
+          <span id="telemetry-grid">124.8</span> <span class="text-xs text-slate-500 font-normal">kW</span>
+        </div>
+        <span class="text-[10px] text-emerald-700 font-mono">▼ 67.2% below peak threshold</span>
+      </div>
+
+      <div class="liquid-glass rounded-2xl p-5 border border-white/80 space-y-1">
+        <span class="text-[10px] font-mono uppercase text-slate-400 font-semibold block">Rooftop Solar PV</span>
+        <div class="text-2xl font-mono font-bold text-emerald-700 flex items-center gap-2">
+          <span id="telemetry-solar">248.5</span> <span class="text-xs text-slate-500 font-normal">kW</span>
+        </div>
+        <span class="text-[10px] text-slate-500 font-mono">Peak midday insolation</span>
+      </div>
+
+      <div class="liquid-glass rounded-2xl p-5 border border-white/80 space-y-1">
+        <span class="text-[10px] font-mono uppercase text-slate-400 font-semibold block">BESS Storage SoC</span>
+        <div class="text-2xl font-mono font-bold text-brand-apricot flex items-center gap-2">
+          <span id="telemetry-bess">91.4</span> <span class="text-xs text-slate-500 font-normal">%</span>
+        </div>
+        <span class="text-[10px] text-slate-500 font-mono">Standby • Ready for 17:00 peak</span>
+      </div>
+
+      <div class="liquid-glass rounded-2xl p-5 border border-white/80 space-y-1">
+        <span class="text-[10px] font-mono uppercase text-slate-400 font-semibold block">Today's Arbitrage Savings</span>
+        <div class="text-2xl font-mono font-bold text-slate-900 flex items-center gap-2">
+          <span id="telemetry-savings">₹8,940</span> <span class="text-xs text-slate-500 font-normal">today</span>
+        </div>
+        <span class="text-[10px] text-emerald-700 font-mono">On track for ₹2.65L this month</span>
+      </div>
+    </div>
+
+    <!-- Power Routing Flow Matrix -->
+    <div class="liquid-glass rounded-3xl p-6 sm:p-8 border border-white/80 shadow-xl space-y-6">
+      <div class="flex items-center justify-between border-b border-slate-900/10 pb-4">
+        <div>
+          <span class="text-[11px] font-mono uppercase text-emerald-800 font-semibold tracking-wider">Edge Orchestration</span>
+          <h3 class="text-lg font-semibold text-slate-900">Live Power Routing Matrix</h3>
+        </div>
+        <span class="text-xs font-mono text-emerald-700 bg-emerald-500/10 px-3 py-1 rounded-full font-semibold">
+          Autonomous Solved • 0.04s
+        </span>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4 font-mono text-xs">
+        <div class="p-4 rounded-2xl bg-white/80 border border-slate-200 space-y-2">
+          <div class="flex items-center justify-between">
+            <span class="text-slate-400">INPUT SOURCE 1</span>
+            <span class="text-emerald-700 font-bold">ACTIVE</span>
+          </div>
+          <div class="text-slate-900 font-bold text-sm">Solar Rooftop Array</div>
+          <div class="text-slate-500 text-[11px]">Generating 248.5 kW → Serving Building Chiller (180 kW) & BESS (68.5 kW)</div>
+        </div>
+
+        <div class="p-4 rounded-2xl bg-white/80 border border-slate-200 space-y-2">
+          <div class="flex items-center justify-between">
+            <span class="text-slate-400">INPUT SOURCE 2</span>
+            <span class="text-amber-700 font-bold">LIMITED</span>
+          </div>
+          <div class="text-slate-900 font-bold text-sm">MSEDCL Grid Supply</div>
+          <div class="text-slate-500 text-[11px]">Throttled to 124.8 kW during high daytime tariff zone</div>
+        </div>
+
+        <div class="p-4 rounded-2xl bg-white/80 border border-slate-200 space-y-2">
+          <div class="flex items-center justify-between">
+            <span class="text-slate-400">OUTPUT DISPATCH</span>
+            <span class="text-blue-700 font-bold">READY</span>
+          </div>
+          <div class="text-slate-900 font-bold text-sm">BESS Peak Injection</div>
+          <div class="text-slate-500 text-[11px]">Target: 180 kW continuous discharge between 17:00 and 22:00</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- PDF EXPORT MODAL -->
+  <div id="pdf-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm">
+    <div class="liquid-glass rounded-3xl p-6 sm:p-8 max-w-lg w-full bg-white/95 border border-white shadow-2xl space-y-5">
+      <div class="flex items-center justify-between border-b border-slate-900/10 pb-4">
+        <div class="flex items-center gap-2">
+          <svg class="w-5 h-5 text-emerald-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 11 3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+          <h3 class="text-base font-semibold text-slate-900">
+            Official Energy Audit Export
+          </h3>
+        </div>
+        <button
+          onclick="closeModal()"
+          class="text-slate-400 hover:text-slate-700 text-xs font-mono cursor-pointer"
+        >
+          ✕ Close
+        </button>
+      </div>
+
+      <div class="text-xs text-slate-600 space-y-2 font-mono">
+        <p><strong>Audit Reference:</strong> WH-AUDIT-2026-9842</p>
+        <p><strong>Facility:</strong> <span id="modal-facility">Pune IT Park (Campus West)</span></p>
+        <p><strong>Annual Savings Validated:</strong> <span id="modal-savings">₹31.80 Lakhs / year</span></p>
+        <p><strong>CEA Carbon Standard:</strong> <span id="modal-carbon">342.5 Metric Tons CO2e</span></p>
+      </div>
+
+      <div class="pt-2 flex items-center justify-end gap-3 border-t border-slate-900/10">
+        <button
+          onclick="closeModal()"
+          class="px-4 py-2 rounded-full border border-slate-300 text-slate-700 text-xs font-mono hover:bg-slate-100 cursor-pointer"
+        >
+          Cancel
+        </button>
+        <button
+          onclick="window.print(); closeModal();"
+          class="px-5 py-2 rounded-full bg-slate-900 text-white text-xs font-mono font-semibold flex items-center gap-1.5 shadow-md active:scale-95 cursor-pointer"
+        >
+          <svg class="w-3.5 h-3.5 text-emerald-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect width="12" height="8" x="6" y="14"/></svg>
+          <span>Print / Save PDF</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ENTERPRISE FOOTER -->
+  <footer class="relative z-10 border-t border-slate-900/[0.08] bg-white/40 backdrop-blur-md mt-20">
+    <div class="max-w-7xl mx-auto px-6 lg:px-12 py-10">
+      <div class="flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-500 font-mono">
+        <div class="flex items-center gap-4">
+          <span>⚡ ZERO MANUAL OVERHEAD</span>
+          <span>•</span>
+          <span>🌱 INDIA CEA 0.716 kg/kWh STANDARD</span>
+          <span>•</span>
+          <span>🔒 SEBI BRSR READY</span>
+        </div>
+        <div>
+          &copy; 2026 WATTHACKS AI • FOR SUSTAINABILITY
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <!-- ======================================================== -->
+  <!-- SCRIPT ENGINE: NAVIGATION, DECK SLIDER & DATA LOGIC     -->
+  <!-- ======================================================== -->
+  <script>
+    // 1. AGGRESSIVE, HEIGHTED MATHEMATICAL WAVE BACKGROUND SIMULATION
+    const waveCanvas = document.getElementById('wave-canvas');
+    if (waveCanvas) {
+      const ctx = waveCanvas.getContext('2d');
+      let width, height;
+      let time = 0;
+
+      function resizeWave() {
+        width = waveCanvas.width = window.innerWidth;
+        height = waveCanvas.height = window.innerHeight;
+      }
+      resizeWave();
+      window.addEventListener('resize', resizeWave);
+
+      // Aggressive, tall waves with deep undulation and vibrant emerald gradients
+      const waves = [
+        { 
+          freq: 0.0014, speed: 0.022, amp: 140, yOffset: 0.44, 
+          colorStart: 'rgba(52, 211, 153, 0.22)', colorEnd: 'rgba(16, 185, 129, 0.08)',
+          strokeColor: 'rgba(52, 211, 153, 0.55)', strokeWidth: 2.5 
+        },
+        { 
+          freq: 0.0010, speed: 0.016, amp: 175, yOffset: 0.52, 
+          colorStart: 'rgba(16, 185, 129, 0.25)', colorEnd: 'rgba(5, 150, 105, 0.12)',
+          strokeColor: 'rgba(16, 185, 129, 0.60)', strokeWidth: 2.8 
+        },
+        { 
+          freq: 0.0020, speed: 0.026, amp: 115, yOffset: 0.60, 
+          colorStart: 'rgba(110, 231, 183, 0.20)', colorEnd: 'rgba(16, 185, 129, 0.06)',
+          strokeColor: 'rgba(110, 231, 183, 0.50)', strokeWidth: 2.0 
+        },
+        { 
+          freq: 0.0026, speed: 0.030, amp: 95, yOffset: 0.68, 
+          colorStart: 'rgba(5, 150, 105, 0.26)', colorEnd: 'rgba(6, 78, 59, 0.14)',
+          strokeColor: 'rgba(52, 211, 153, 0.65)', strokeWidth: 2.2 
+        },
+        { 
+          freq: 0.0018, speed: 0.018, amp: 130, yOffset: 0.74, 
+          colorStart: 'rgba(251, 146, 60, 0.12)', colorEnd: 'rgba(16, 185, 129, 0.05)',
+          strokeColor: 'rgba(251, 146, 60, 0.40)', strokeWidth: 1.8 
+        }
+      ];
+
+      function drawWaves() {
+        ctx.clearRect(0, 0, width, height);
+
+        waves.forEach((w) => {
+          ctx.beginPath();
+          ctx.moveTo(0, height);
+          for (let x = 0; x <= width; x += 6) {
+            // High-amplitude compounding harmonic wave crests
+            const y = height * w.yOffset 
+              + Math.sin(x * w.freq + time * w.speed) * w.amp 
+              + Math.cos(x * w.freq * 1.5 - time * w.speed * 0.75) * (w.amp * 0.45)
+              + Math.sin(x * 0.0006 + time * 0.012) * (w.amp * 0.35);
+
+            ctx.lineTo(x, y);
+          }
+          ctx.lineTo(width, height);
+          ctx.closePath();
+
+          const grad = ctx.createLinearGradient(0, height * (w.yOffset - 0.2), 0, height);
+          grad.addColorStop(0, w.colorStart);
+          grad.addColorStop(1, w.colorEnd);
+          ctx.fillStyle = grad;
+          ctx.fill();
+
+          ctx.strokeStyle = w.strokeColor;
+          ctx.lineWidth = w.strokeWidth;
+          ctx.stroke();
+        });
+
+        time += 1;
+        requestAnimationFrame(drawWaves);
+      }
+      drawWaves();
+    }
+
+    // 1B. NAVBAR GREEN LIQUID FLOWING ENGINE
+    const navLiquidCanvas = document.getElementById('navbar-liquid-canvas');
+    if (navLiquidCanvas) {
+      const nCtx = navLiquidCanvas.getContext('2d');
+      let nWidth, nHeight;
+      let navTime = 0;
+
+      function resizeNavLiquid() {
+        const rect = navLiquidCanvas.parentElement.getBoundingClientRect();
+        nWidth = navLiquidCanvas.width = rect.width;
+        nHeight = navLiquidCanvas.height = rect.height;
+      }
+      resizeNavLiquid();
+      window.addEventListener('resize', resizeNavLiquid);
+
+      // Viscous green fluid blobs drifting inside the glass
+      const fluidBlobs = [
+        { x: 0.12, y: 0.50, r: 48, speedX: 0.016, speedY: 0.024, color: 'rgba(16, 185, 129, 0.55)' },
+        { x: 0.42, y: 0.58, r: 62, speedX: -0.014, speedY: 0.018, color: 'rgba(52, 211, 153, 0.60)' },
+        { x: 0.72, y: 0.44, r: 54, speedX: 0.018, speedY: -0.020, color: 'rgba(110, 231, 183, 0.50)' },
+        { x: 0.88, y: 0.52, r: 42, speedX: -0.015, speedY: 0.015, color: 'rgba(5, 150, 105, 0.48)' },
+        { x: 0.28, y: 0.38, r: 38, speedX: 0.020, speedY: 0.022, color: 'rgba(52, 211, 153, 0.45)' }
+      ];
+
+      function drawNavLiquid() {
+        if (!nWidth || !nHeight) resizeNavLiquid();
+        nCtx.clearRect(0, 0, nWidth, nHeight);
+
+        // 3 Layered turbulent flowing green liquid waves inside the glass tube
+        for (let i = 0; i < 3; i++) {
+          nCtx.beginPath();
+          nCtx.moveTo(0, nHeight);
+          const yMid = nHeight * (0.32 + i * 0.18);
+          for (let x = 0; x <= nWidth; x += 5) {
+            const waveY = yMid 
+              + Math.sin(x * 0.016 + navTime * 0.045 + i * 1.6) * (9 + i * 4)
+              + Math.cos(x * 0.026 - navTime * 0.032) * 6;
+            nCtx.lineTo(x, waveY);
+          }
+          nCtx.lineTo(nWidth, nHeight);
+          nCtx.closePath();
+
+          const grad = nCtx.createLinearGradient(0, 0, nWidth, 0);
+          if (i === 0) {
+            grad.addColorStop(0, 'rgba(16, 185, 129, 0.50)');
+            grad.addColorStop(0.5, 'rgba(52, 211, 153, 0.65)');
+            grad.addColorStop(1, 'rgba(110, 231, 183, 0.48)');
+          } else if (i === 1) {
+            grad.addColorStop(0, 'rgba(5, 150, 105, 0.42)');
+            grad.addColorStop(0.5, 'rgba(16, 185, 129, 0.58)');
+            grad.addColorStop(1, 'rgba(52, 211, 153, 0.45)');
+          } else {
+            grad.addColorStop(0, 'rgba(52, 211, 153, 0.35)');
+            grad.addColorStop(0.5, 'rgba(110, 231, 183, 0.42)');
+            grad.addColorStop(1, 'rgba(16, 185, 129, 0.32)');
+          }
+          nCtx.fillStyle = grad;
+          nCtx.fill();
+        }
+
+        // Floating glowing liquid metaballs for organic fluid viscosity
+        fluidBlobs.forEach((b) => {
+          const curX = ((b.x + Math.sin(navTime * b.speedX) * 0.18) % 1) * nWidth;
+          const curY = (b.y + Math.cos(navTime * b.speedY) * 0.28) * nHeight;
+
+          const radGrad = nCtx.createRadialGradient(curX, curY, 0, curX, curY, b.r);
+          radGrad.addColorStop(0, b.color);
+          radGrad.addColorStop(0.7, b.color.replace(/[\d\.]+\)$/, '0.18)'));
+          radGrad.addColorStop(1, 'rgba(255, 255, 255, 0)');
+
+          nCtx.beginPath();
+          nCtx.arc(curX, curY, b.r, 0, Math.PI * 2);
+          nCtx.fillStyle = radGrad;
+          nCtx.fill();
+        });
+
+        navTime += 1;
+        requestAnimationFrame(drawNavLiquid);
+      }
+      drawNavLiquid();
+    }
+
+    // 2. PAGE NAVIGATION ENGINE
+    const PAGES = ['home', 'ingest', 'audit', 'console'];
+    let activePage = 'home';
+
+    function navigateToPage(pageId, scrollToSectionId = null) {
+      activePage = pageId;
+      PAGES.forEach(p => {
+        const el = document.getElementById('page-' + p);
+        if (el) el.classList.toggle('hidden', p !== pageId);
+      });
+
+      // Update Nav links: ONLY items that belong to the current page!
+      const navLinks = document.getElementById('nav-context-links');
+      const navActionBtn = document.getElementById('nav-action-btn');
+
+      if (navLinks) {
+        if (pageId === 'home') {
+          navLinks.innerHTML = `
+            <button onclick="scrollToEl('hero')" class="py-1 px-2.5 rounded-lg text-slate-950 font-bold bg-slate-900/5 hover:text-slate-950 transition-colors cursor-pointer">
+              Overview
+            </button>
+            <button onclick="scrollToEl('comparison')" class="py-1 px-2.5 rounded-lg text-slate-700 hover:text-slate-950 transition-colors cursor-pointer">
+              Vs Competitors
+            </button>
+            <button onclick="scrollToEl('features')" class="py-1 px-2.5 rounded-lg text-slate-700 hover:text-slate-950 transition-colors cursor-pointer">
+              Features
+            </button>
+          `;
+          if (navActionBtn) {
+            navActionBtn.innerHTML = '<span>Upload Bill ↑</span>';
+            navActionBtn.className = 'px-4 sm:px-5 py-2 rounded-full border border-slate-900 bg-slate-900 text-white hover:bg-slate-800 text-xs font-semibold tracking-wider transition-all cursor-pointer active:scale-95 shadow-sm flex items-center gap-1.5';
+            navActionBtn.onclick = () => navigateToPage('ingest');
+          }
+        } else if (pageId === 'ingest') {
+          navLinks.innerHTML = `
+            <button onclick="navigateToPage('home')" class="py-1 px-2.5 rounded-lg text-slate-500 hover:text-slate-900 transition-colors cursor-pointer">
+              ← Home
+            </button>
+            <button onclick="scrollToEl('bill-upload-section')" class="py-1 px-2.5 rounded-lg text-emerald-900 font-bold bg-emerald-500/10 hover:text-slate-950 transition-colors cursor-pointer">
+              1. Bill Upload & OCR
+            </button>
+            <button onclick="scrollToEl('facility-info-section')" class="py-1 px-2.5 rounded-lg text-slate-700 hover:text-slate-950 transition-colors cursor-pointer">
+              2. Facility Details
+            </button>
+          `;
+          if (navActionBtn) {
+            navActionBtn.innerHTML = '<span>Facility Form ↓</span>';
+            navActionBtn.className = 'px-4 sm:px-5 py-2 rounded-full border border-slate-900 bg-slate-900 text-white hover:bg-slate-800 text-xs font-semibold tracking-wider transition-all cursor-pointer active:scale-95 shadow-sm flex items-center gap-1.5';
+            navActionBtn.onclick = () => scrollToEl('facility-info-section');
+          }
+        } else if (pageId === 'audit') {
+          navLinks.innerHTML = `
+            <button onclick="navigateToPage('ingest')" class="py-1 px-2.5 rounded-lg text-slate-500 hover:text-slate-900 transition-colors cursor-pointer">
+              ← Back to Upload
+            </button>
+            <button onclick="scrollToEl('audit-summary')" class="py-1 px-2.5 rounded-lg text-emerald-900 font-bold bg-emerald-500/10 hover:text-slate-950 transition-colors cursor-pointer">
+              Audit Certificate
+            </button>
+            <button onclick="scrollToEl('audit-breakdown')" class="py-1 px-2.5 rounded-lg text-slate-700 hover:text-slate-950 transition-colors cursor-pointer">
+              Line-Item Breakdown
+            </button>
+            <button onclick="scrollToEl('audit-dispatch')" class="py-1 px-2.5 rounded-lg text-slate-700 hover:text-slate-950 transition-colors cursor-pointer">
+              24h Dispatch
+            </button>
+          `;
+          if (navActionBtn) {
+            navActionBtn.innerHTML = '<span>Print / Save PDF ↓</span>';
+            navActionBtn.className = 'px-4 sm:px-5 py-2 rounded-full border border-slate-900 bg-slate-900 text-white hover:bg-slate-800 text-xs font-semibold tracking-wider transition-all cursor-pointer active:scale-95 shadow-sm flex items-center gap-1.5';
+            navActionBtn.onclick = () => window.print();
+          }
+        } else if (pageId === 'console') {
+          navLinks.innerHTML = `
+            <button onclick="navigateToPage('home')" class="py-1 px-2.5 rounded-lg text-slate-500 hover:text-slate-900 transition-colors cursor-pointer">
+              ← Back to Home
+            </button>
+            <button onclick="scrollToEl('console-telemetry')" class="py-1 px-2.5 rounded-lg text-emerald-900 font-bold bg-emerald-500/10 hover:text-slate-950 transition-colors cursor-pointer">
+              Telemetry
+            </button>
+            <button onclick="scrollToEl('console-routing')" class="py-1 px-2.5 rounded-lg text-slate-700 hover:text-slate-950 transition-colors cursor-pointer">
+              Power Routing
+            </button>
+          `;
+          if (navActionBtn) {
+            navActionBtn.innerHTML = '<span>Exit Console ✕</span>';
+            navActionBtn.className = 'px-4 sm:px-5 py-2 rounded-full border border-slate-300 bg-white text-slate-800 hover:bg-slate-100 text-xs font-semibold tracking-wider transition-all cursor-pointer active:scale-95 shadow-sm flex items-center gap-1.5';
+            navActionBtn.onclick = () => navigateToPage('home');
+          }
+        }
+      }
+
+      if (scrollToSectionId) {
+        setTimeout(() => {
+          scrollToEl(scrollToSectionId);
+        }, 120);
+      } else {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+    }
+
+    function scrollToEl(id) {
+      const el = document.getElementById(id);
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    // 3. 4-CARD REALISTIC SLIDING DECK ENGINE
+    const STACK_STYLES = [
+      { transform: 'translateY(0px) scale(1) rotate(0deg)', zIndex: 30, opacity: 1, filter: 'none', pointerEvents: 'auto' },
+      { transform: 'translateY(-20px) scale(0.94) rotate(2.5deg)', zIndex: 20, opacity: 0.92, filter: 'brightness(0.96)', pointerEvents: 'none' },
+      { transform: 'translateY(-38px) scale(0.88) rotate(-2.5deg)', zIndex: 10, opacity: 0.78, filter: 'brightness(0.92)', pointerEvents: 'none' },
+      { transform: 'translateY(-54px) scale(0.82) rotate(1.8deg)', zIndex: 5, opacity: 0.58, filter: 'brightness(0.88)', pointerEvents: 'none' }
+    ];
+
+    let deckOrder = [0, 1, 2, 3];
+    let isAnimatingDeck = false;
+    let deckTimer = null;
+    let isDeckPaused = false;
+
+    function renderDeck() {
+      deckOrder.forEach((cardIdx, stackPos) => {
+        const cardEl = document.getElementById('deck-card-' + cardIdx);
+        if (!cardEl) return;
+        const style = STACK_STYLES[stackPos];
+        cardEl.style.transform = style.transform;
+        cardEl.style.zIndex = style.zIndex;
+        cardEl.style.opacity = style.opacity;
+        cardEl.style.filter = style.filter;
+        cardEl.style.pointerEvents = style.pointerEvents;
+      });
+    }
+    renderDeck();
+
+    function slideDeckNext() {
+      if (isAnimatingDeck) return;
+      isAnimatingDeck = true;
+
+      const topCardIdx = deckOrder[0];
+      const topCardEl = document.getElementById('deck-card-' + topCardIdx);
+      if (topCardEl) topCardEl.classList.add('swiping-out');
+
+      setTimeout(() => {
+        if (topCardEl) topCardEl.classList.remove('swiping-out');
+        deckOrder = [...deckOrder.slice(1), deckOrder[0]];
+        renderDeck();
+        isAnimatingDeck = false;
+      }, 750);
+    }
+
+    function slideDeckPrev() {
+      if (isAnimatingDeck) return;
+      isAnimatingDeck = true;
+      deckOrder = [deckOrder[deckOrder.length - 1], ...deckOrder.slice(0, deckOrder.length - 1)];
+      renderDeck();
+      setTimeout(() => {
+        isAnimatingDeck = false;
+      }, 750);
+    }
+
+    const deckContainer = document.getElementById('card-deck-container');
+    if (deckContainer) {
+      deckContainer.addEventListener('mouseenter', () => { isDeckPaused = true; });
+      deckContainer.addEventListener('mouseleave', () => { isDeckPaused = false; });
+    }
+
+    deckTimer = setInterval(() => {
+      if (!isDeckPaused && activePage === 'home') {
+        slideDeckNext();
+      }
+    }, 3500);
+
+    // 4. SAMPLE BILLS DATA REPOSITORY
+    const BILL_SAMPLES = {
+      msedcl: {
+        name: 'MSEDCL HT-1 Commercial',
+        location: 'Pune IT Park (Campus West)',
+        billAmount: 845620,
+        demand: 550,
+        units: 94200,
+        peakSurcharge: 184200,
+        consumerNo: '084729104829',
+        billingCycle: 'August 2026',
+        discom: 'MSEDCL (Maharashtra) • HT-1 Commercial',
+        pf: '0.98'
+      },
+      bescom: {
+        name: 'BESCOM HT-2A Campus',
+        location: 'Bengaluru Tech Hub (EcoSpace)',
+        billAmount: 520400,
+        demand: 380,
+        units: 58900,
+        peakSurcharge: 98400,
+        consumerNo: 'BES-884920194',
+        billingCycle: 'July 2026',
+        discom: 'BESCOM (Karnataka) • HT-2A Commercial',
+        pf: '0.96'
+      },
+      tatapower: {
+        name: 'Tata Power Industrial',
+        location: 'Gurugram Industrial Hub',
+        billAmount: 1485000,
+        demand: 920,
+        units: 168400,
+        peakSurcharge: 342000,
+        consumerNo: 'TP-DEL-00948123',
+        billingCycle: 'August 2026',
+        discom: 'Tata Power (Delhi/NCR) • HT Industrial',
+        pf: '0.97'
+      }
+    };
+
+    let currentBill = BILL_SAMPLES.msedcl;
+
+    // Elements
+    const dropZone = document.getElementById('drop-zone');
+    const fileInput = document.getElementById('file-input');
+    const uploadIdleState = document.getElementById('upload-idle-state');
+    const uploadProgressState = document.getElementById('upload-progress-state');
+    const extractFilename = document.getElementById('extract-filename');
+    const extractStatus = document.getElementById('extract-status');
+    const extractProgBar = document.getElementById('extract-prog-bar');
+    const extractPct = document.getElementById('extract-pct');
+
+    // Form inputs
+    const formFacilityName = document.getElementById('form-facility-name');
+    const formConsumerNo = document.getElementById('form-consumer-no');
+    const formDiscom = document.getElementById('form-discom');
+    const formBillAmount = document.getElementById('form-bill-amount');
+    const formDemand = document.getElementById('form-demand');
+    const formUnits = document.getElementById('form-units');
+    const formPeakSurcharge = document.getElementById('form-peak-surcharge');
+    const formPf = document.getElementById('form-pf');
+    const formCycle = document.getElementById('form-cycle');
+    const formSolar = document.getElementById('form-solar');
+    const formBess = document.getElementById('form-bess');
+    const formArea = document.getElementById('form-area');
+    const badgeBillAmount = document.getElementById('badge-bill-amount');
+    const badgeAnnualExposure = document.getElementById('badge-annual-exposure');
+
+    function formatInr(val) {
+      const num = Number(val);
+      if (!num) return '₹0';
+      if (num >= 10000000) return '₹' + (num / 10000000).toFixed(2) + ' Cr';
+      if (num >= 100000) return '₹' + (num / 100000).toFixed(2) + ' Lakhs';
+      return '₹' + Math.round(num).toLocaleString('en-IN');
+    }
+
+    function populateForm(data) {
+      currentBill = data;
+      if (formFacilityName) formFacilityName.value = data.location || data.name;
+      if (formConsumerNo) formConsumerNo.value = data.consumerNo;
+      if (formDiscom) formDiscom.value = data.discom;
+      if (formBillAmount) formBillAmount.value = data.billAmount;
+      if (formDemand) formDemand.value = data.demand;
+      if (formUnits) formUnits.value = data.units;
+      if (formPeakSurcharge) formPeakSurcharge.value = data.peakSurcharge;
+      if (formPf) formPf.value = data.pf || '0.98';
+      if (formCycle) formCycle.value = data.billingCycle || 'August 2026';
+
+      // Keep unretrievable hardware fields blank as requested
+      if (formSolar) formSolar.value = '';
+      if (formBess) formBess.value = '';
+      if (formArea) formArea.value = '';
+
+      if (badgeBillAmount) badgeBillAmount.textContent = formatInr(data.billAmount);
+      if (badgeAnnualExposure) badgeAnnualExposure.textContent = formatInr(data.peakSurcharge * 12) + ' / year';
+    }
+
+    function runExtraction(billData, fileName) {
+      if (uploadIdleState) uploadIdleState.classList.add('hidden');
+      if (uploadProgressState) uploadProgressState.classList.remove('hidden');
+
+      if (extractFilename) extractFilename.textContent = 'Scraping: ' + (fileName || billData.name + '.pdf');
+      if (extractStatus) extractStatus.textContent = 'Ingesting bill raster and OCR tokenization...';
+      if (extractProgBar) extractProgBar.style.width = '20%';
+      if (extractPct) extractPct.textContent = '20% processed';
+
+      setTimeout(() => {
+        if (extractProgBar) extractProgBar.style.width = '55%';
+        if (extractStatus) extractStatus.textContent = 'Detected DISCOM: ' + billData.discom.split('•')[0] + '...';
+        if (extractPct) extractPct.textContent = '55% processed';
+      }, 500);
+
+      setTimeout(() => {
+        if (extractProgBar) extractProgBar.style.width = '85%';
+        if (extractStatus) extractStatus.textContent = 'Parsing Sanctioned Demand (' + billData.demand + ' kW) & Peak ToD Surcharges...';
+        if (extractPct) extractPct.textContent = '85% processed';
+      }, 1100);
+
+      setTimeout(() => {
+        if (extractProgBar) extractProgBar.style.width = '100%';
+        if (extractStatus) extractStatus.textContent = 'Extraction verified! Auto-scrolling to facility data...';
+        if (extractPct) extractPct.textContent = '100% complete';
+
+        populateForm(billData);
+
+        setTimeout(() => {
+          if (uploadIdleState) uploadIdleState.classList.remove('hidden');
+          if (uploadProgressState) uploadProgressState.classList.add('hidden');
+
+          const formSection = document.getElementById('facility-info-section');
+          if (formSection) {
+            formSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }
+        }, 600);
+      }, 1600);
+    }
+
+    // Sample Bill Button Clicks
+    const sampleMsedcl = document.getElementById('sample-msedcl');
+    const sampleBescom = document.getElementById('sample-bescom');
+    const sampleTatapower = document.getElementById('sample-tatapower');
+
+    if (sampleMsedcl) sampleMsedcl.addEventListener('click', () => runExtraction(BILL_SAMPLES.msedcl, 'MSEDCL_HT1_PuneTechPark_Aug2026.pdf'));
+    if (sampleBescom) sampleBescom.addEventListener('click', () => runExtraction(BILL_SAMPLES.bescom, 'BESCOM_HT2A_BengaluruHub_Jul2026.pdf'));
+    if (sampleTatapower) sampleTatapower.addEventListener('click', () => runExtraction(BILL_SAMPLES.tatapower, 'TataPower_Industrial_Gurugram_Aug2026.pdf'));
+
+    // File Input & Drag/Drop
+    if (dropZone && fileInput) {
+      dropZone.addEventListener('click', () => fileInput.click());
+      dropZone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        dropZone.classList.add('border-emerald-500', 'bg-emerald-50/40');
+      });
+      dropZone.addEventListener('dragleave', () => {
+        dropZone.classList.remove('border-emerald-500', 'bg-emerald-50/40');
+      });
+      dropZone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        dropZone.classList.remove('border-emerald-500', 'bg-emerald-50/40');
+        if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+          const file = e.dataTransfer.files[0];
+          runExtraction(BILL_SAMPLES.msedcl, file.name);
+        }
+      });
+      fileInput.addEventListener('change', (e) => {
+        if (e.target.files && e.target.files[0]) {
+          const file = e.target.files[0];
+          runExtraction(BILL_SAMPLES.msedcl, file.name);
+        }
+      });
+    }
+
+    // Handle Form Submit -> Navigate to Audit Report Page
+    const extractedInfoForm = document.getElementById('extracted-info-form');
+    if (extractedInfoForm) {
+      extractedInfoForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+
+        const facName = formFacilityName.value.trim() || 'Commercial Facility Node';
+        const consNo = formConsumerNo.value.trim() || '084729104829';
+        const discom = formDiscom.value.trim() || 'MSEDCL HT-1 Commercial';
+        const billVal = parseFloat(formBillAmount.value) || 845620;
+        const demandVal = parseFloat(formDemand.value) || 550;
+        const surchargeVal = parseFloat(formPeakSurcharge.value) || 184200;
+        const cycle = formCycle.value.trim() || 'August 2026';
+        const solarVal = parseFloat(formSolar.value) || 0;
+        const bessVal = parseFloat(formBess.value) || 0;
+
+        const annualBill = billVal * 12;
+        const annualSurcharge = surchargeVal * 12;
+        const monthlySavings = Math.round(surchargeVal * 0.78 + (solarVal > 0 ? solarVal * 120 * 5.2 : billVal * 0.08));
+        const annualSavings = monthlySavings * 12;
+        const savingsPct = ((annualSavings / annualBill) * 100).toFixed(1);
+
+        const annualKwhSaved = Math.round(annualSavings / 7.2);
+        const carbonTons = ((annualKwhSaved * 0.716) / 1000).toFixed(1);
+        const scope2 = (carbonTons * 0.84).toFixed(1);
+        const scope1 = (carbonTons * 0.16).toFixed(1);
+
+        const recBess = bessVal > 0 ? bessVal : Math.round(demandVal * 0.45);
+        const recSolar = solarVal > 0 ? solarVal : Math.round(demandVal * 0.60);
+
+        // Update Audit Page Elements
+        document.getElementById('audit-facility-name').textContent = facName;
+        document.getElementById('audit-consumer-no').textContent = consNo;
+        document.getElementById('audit-discom').textContent = discom;
+        document.getElementById('audit-cycle').textContent = cycle;
+
+        document.getElementById('kpi-baseline').textContent = formatInr(annualBill);
+        document.getElementById('kpi-baseline-desc').textContent = 'Based on ' + formatInr(billVal) + '/mo current bill';
+        document.getElementById('kpi-leakage').textContent = formatInr(annualSurcharge);
+        document.getElementById('kpi-savings').textContent = formatInr(annualSavings) + ' / yr';
+        document.getElementById('kpi-savings-pct').textContent = savingsPct + '% net reduction with peak shaving';
+        document.getElementById('kpi-carbon').textContent = carbonTons + ' tCO2e';
+
+        // Table elements
+        document.getElementById('tbl-surcharge-val').textContent = formatInr(surchargeVal) + '/mo';
+        document.getElementById('tbl-surcharge-opt').textContent = formatInr(Math.round(surchargeVal * 0.22)) + '/mo';
+        document.getElementById('tbl-surcharge-sav').textContent = '-' + formatInr(Math.round(surchargeVal * 0.78)) + '/mo';
+
+        document.getElementById('tbl-demand-val').textContent = formatInr(Math.round(demandVal * 490)) + '/mo';
+        document.getElementById('tbl-demand-opt').textContent = formatInr(Math.round(demandVal * 410)) + '/mo';
+        document.getElementById('tbl-demand-sav').textContent = '-' + formatInr(Math.round(demandVal * 80)) + '/mo';
+
+        document.getElementById('tbl-total-cur').textContent = formatInr(billVal);
+        document.getElementById('tbl-total-opt').textContent = formatInr(billVal - monthlySavings);
+        document.getElementById('tbl-total-sav').textContent = '-' + formatInr(monthlySavings) + ' / mo';
+
+        document.getElementById('rec-bess').textContent = recBess + ' kWh';
+        document.getElementById('rec-solar').textContent = recSolar + ' kWp';
+
+        document.getElementById('audit-scope2').textContent = scope2 + ' tCO2e / yr';
+        document.getElementById('audit-scope1').textContent = scope1 + ' tCO2e / yr';
+
+        document.getElementById('modal-facility').textContent = facName;
+        document.getElementById('modal-savings').textContent = formatInr(annualSavings) + ' / year';
+        document.getElementById('modal-carbon').textContent = carbonTons + ' Metric Tons CO2e';
+
+        const consoleNode = document.getElementById('console-node-name');
+        if (consoleNode) consoleNode.textContent = facName;
+
+        navigateToPage('audit');
+      });
+    }
+
+    // Modal controls
+    const pdfModal = document.getElementById('pdf-modal');
+    function openModal() {
+      if (pdfModal) pdfModal.classList.remove('hidden');
+    }
+    function closeModal() {
+      if (pdfModal) pdfModal.classList.add('hidden');
+    }
+  </script>
+
+</body>
+</html>
