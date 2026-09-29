@@ -17,7 +17,6 @@
 
 * **🌐 Live Deployed Application:** [https://watthacks-ai.vercel.app](https://watthacks-ai.vercel.app)
 * **🐙 Public GitHub Repository:** [https://github.com/ypatil2006-coder/-watthacks-ai](https://github.com/ypatil2006-coder/-watthacks-ai)
-* **🎥 3-Minute Video Demo (Google Drive):** **[Watch Demo Video on Google Drive](#)** *(Replace `#` with your Google Drive Link)*
 * **📁 Scenario-Based Challenge:** AI for Sustainability (Responsible Resource Utilization, Operational Efficiency, and Data-Driven Grid Decarbonization)
 
 ---
