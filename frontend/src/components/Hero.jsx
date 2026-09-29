@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 
 const CARDS = [
   {
-    image: 'file:///home/yash/.gemini/antigravity-cli/brain/ddc0818a-ff83-4a41-b7e9-b7f89d36df57/eco_friendly_park_1790666504368.jpg',
+    image: 'https://images.unsplash.com/photo-1518780664697-55e3ad937233?auto=format&fit=crop&w=1200&q=80',
     fallbackImage: 'https://images.unsplash.com/photo-1518780664697-55e3ad937233?auto=format&fit=crop&w=1200&q=80',
     tag: '01 / 04 • BIOPHILIC CAMPUS',
     category: 'Sustainable Architecture',
@@ -11,7 +11,7 @@ const CARDS = [
     alt: 'WattHacks Sustainable Biophilic Corporate Eco Park'
   },
   {
-    image: 'file:///home/yash/.gemini/antigravity-cli/brain/ddc0818a-ff83-4a41-b7e9-b7f89d36df57/solar_energy_field_1790666516684.jpg',
+    image: 'https://images.unsplash.com/photo-1509391365360-2e959784a276?auto=format&fit=crop&w=1200&q=80',
     fallbackImage: 'https://images.unsplash.com/photo-1509391365360-2e959784a276?auto=format&fit=crop&w=1200&q=80',
     tag: '02 / 04 • SOLAR GENERATION',
     category: 'Photovoltaic Arrays',
@@ -20,7 +20,7 @@ const CARDS = [
     alt: 'WattHacks Utility-Scale Solar Energy Field'
   },
   {
-    image: 'file:///home/yash/.gemini/antigravity-cli/brain/ddc0818a-ff83-4a41-b7e9-b7f89d36df57/carbon_emission_grid_1790666540937.jpg',
+    image: 'https://images.unsplash.com/photo-1611273426858-450d8e3c9fce?auto=format&fit=crop&w=1200&q=80',
     fallbackImage: 'https://images.unsplash.com/photo-1611273426858-450d8e3c9fce?auto=format&fit=crop&w=1200&q=80',
     tag: '03 / 04 • CARBON ABATEMENT',
     category: 'Fossil Grid Baseline',
@@ -29,7 +29,7 @@ const CARDS = [
     alt: 'WattHacks Carbon Emissions & Fossil Baseline Monitoring'
   },
   {
-    image: 'file:///home/yash/.gemini/antigravity-cli/brain/ddc0818a-ff83-4a41-b7e9-b7f89d36df57/wind_energy_turbines_1790666557944.jpg',
+    image: 'https://images.unsplash.com/photo-1466611653911-95081537e5b7?auto=format&fit=crop&w=1200&q=80',
     fallbackImage: 'https://images.unsplash.com/photo-1466611653911-95081537e5b7?auto=format&fit=crop&w=1200&q=80',
     tag: '04 / 04 • KINETIC WIND POWER',
     category: 'Renewable Night Tariffs',

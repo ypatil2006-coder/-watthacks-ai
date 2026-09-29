@@ -4,7 +4,7 @@
 > **Team:** wallHacks · **Regional Target:** Pune & Western Grid (IN-WE) · **Tariff Benchmark:** MSEDCL HT-I Commercial Schedule  
 > **Carbon Standard:** Govt. of India Central Electricity Authority (CEA) Baseline (0.716 kg CO₂/kWh)  
 
-[![Deployment Status](https://img.shields.io/badge/Vercel-Live%20Production-10B981?logo=vercel&style=flat-square)](https://-watthacks-ai.vercel.app)
+[![Deployment Status](https://img.shields.io/badge/Vercel-Live%20Production-10B981?logo=vercel&style=flat-square)](https://watthacks-ai.vercel.app)
 [![AI Engine](https://img.shields.io/badge/AI%20Core-Google%20Gemini%20Multimodal-4285F4?logo=google&style=flat-square)](https://aistudio.google.com)
 [![Frontend Stack](https://img.shields.io/badge/Frontend-React%2018%20%7C%20Vite%20%7C%20Tailwind%20CSS-06B6D4?style=flat-square)](https://vitejs.dev)
 [![Backend Stack](https://img.shields.io/badge/Backend-Node.js%20%7C%20Express%20%7C%20Zod-339933?style=flat-square)](https://nodejs.org)
@@ -15,7 +15,7 @@
 
 ## 🏆 Official Hackathon Submission Information
 
-* **🌐 Live Deployed Application:** [https://-watthacks-ai.vercel.app](https://-watthacks-ai.vercel.app)
+* **🌐 Live Deployed Application:** [https://watthacks-ai.vercel.app](https://watthacks-ai.vercel.app)
 * **🐙 Public GitHub Repository:** [https://github.com/ypatil2006-coder/-watthacks-ai](https://github.com/ypatil2006-coder/-watthacks-ai)
 * **🎥 3-Minute Video Demo (Google Drive):** **[Watch Demo Video on Google Drive](#)** *(Replace `#` with your Google Drive Link)*
 * **📁 Scenario-Based Challenge:** AI for Sustainability (Responsible Resource Utilization, Operational Efficiency, and Data-Driven Grid Decarbonization)
