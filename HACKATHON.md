@@ -4,6 +4,7 @@
 > **Theme:** AI for Sustainability  
 > **Team:** wallHacks  
 > **Project:** WattHacks AI — Autonomous Energy Arbitrage & Carbon Grid Intelligence  
+> **Official Demo Video (150s):** [Watch on Google Drive](https://drive.google.com/file/d/1d2yOctTP2mUPG7X5MoXjiM4ztfRkg0kk/view?usp=drive_link)  
 > **Market Focus:** Pune & Maharashtra Commercial Facilities, IT Parks (Hinjewadi, Magarpatta) & Data Centers  
 > **Validation Score:** 85/100 on ValidatorAI (High Execution Zone)
 
@@ -92,7 +93,9 @@ For a standard 500 kVA commercial facility in Hinjewadi Phase 1, Pune:
 
 ---
 
-## 5. 🎬 150-Second Hackathon Demo Video Script
+## 5. 🎬 150-Second Hackathon Demo Video & Script
+
+> 📽️ **Watch the 150-Second Demo Video:** [https://drive.google.com/file/d/1d2yOctTP2mUPG7X5MoXjiM4ztfRkg0kk/view?usp=drive_link](https://drive.google.com/file/d/1d2yOctTP2mUPG7X5MoXjiM4ztfRkg0kk/view?usp=drive_link)
 
 *Maximum time limit: 2 minutes 30 seconds (150 seconds)*
 

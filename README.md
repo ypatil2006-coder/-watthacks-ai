@@ -6,6 +6,7 @@
 > **Carbon Standard:** Govt. of India Central Electricity Authority (CEA) Baseline (0.716 kg CO₂/kWh) & SEBI BRSR Principle 6  
 
 [![Deployment Status](https://img.shields.io/badge/Vercel-Live%20Production-10B981?logo=vercel&style=flat-square)](https://watthacks-ai.vercel.app)
+[![Demo Video](https://img.shields.io/badge/Demo%20Video-Google%20Drive-EA4335?logo=googledrive&logoColor=white&style=flat-square)](https://drive.google.com/file/d/1d2yOctTP2mUPG7X5MoXjiM4ztfRkg0kk/view?usp=drive_link)
 [![Database](https://img.shields.io/badge/Database-MongoDB%20Atlas%20Cloud-47A248?logo=mongodb&style=flat-square)](https://www.mongodb.com/atlas)
 [![AI Engine](https://img.shields.io/badge/AI%20Core-Google%20Gemini%20Multimodal-4285F4?logo=google&style=flat-square)](https://aistudio.google.com)
 [![Frontend Stack](https://img.shields.io/badge/Frontend-React%2018%20%7C%20Vite%20%7C%20Tailwind%20CSS-06B6D4?style=flat-square)](https://vitejs.dev)
@@ -20,6 +21,7 @@
 | Submission Field | Official Details |
 | :--- | :--- |
 | **Project Title** | **WattHacks AI** — Autonomous Commercial Energy Arbitrage & Grid Carbon Intelligence |
+| **Official Demo Video (150s)** | [**Watch Full Walkthrough on Google Drive**](https://drive.google.com/file/d/1d2yOctTP2mUPG7X5MoXjiM4ztfRkg0kk/view?usp=drive_link) |
 | **Live Deployed Application** | [https://watthacks-ai.vercel.app](https://watthacks-ai.vercel.app) |
 | **Public GitHub Repository** | [https://github.com/ypatil2006-coder/-watthacks-ai](https://github.com/ypatil2006-coder/-watthacks-ai) |
 | **Challenge Track** | **Scenario-Based Sustainability Challenge** (AI for Sustainability, Resource Optimization, and Decarbonization) |
@@ -288,7 +290,13 @@ Open your browser at: **`http://localhost:3000`**
 
 ---
 
-## 🎬 11. 150-Second Demo Video Script
+## 🎬 11. 150-Second Demo Video & Script
+
+[![Watch 150s Demo Video on Google Drive](https://img.shields.io/badge/▶_Watch_Demo_Video-Google_Drive-EA4335?style=for-the-badge&logo=googledrive&logoColor=white)](https://drive.google.com/file/d/1d2yOctTP2mUPG7X5MoXjiM4ztfRkg0kk/view?usp=drive_link)
+
+> 📽️ **Watch the Official 150-Second Pitch & Walkthrough Video:**  
+> **Google Drive Link:** [https://drive.google.com/file/d/1d2yOctTP2mUPG7X5MoXjiM4ztfRkg0kk/view?usp=drive_link](https://drive.google.com/file/d/1d2yOctTP2mUPG7X5MoXjiM4ztfRkg0kk/view?usp=drive_link)  
+> *Recorded in 1080p Full HD showcasing live multimodal bill extraction, SEBI BRSR audit generation, and autonomous load-shifting schedules.*
 
 *Maximum time limit: 2 minutes 30 seconds (150 seconds)*
 

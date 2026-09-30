@@ -142,14 +142,23 @@ export default function Hero() {
             Autonomous energy arbitrage powered by Gemini. Shift heavy commercial loads away from peak fossil surcharges into clean night rebates.
           </p>
 
-          {/* Single Elegant CTA Button */}
-          <div className="flex items-center gap-8 mb-12">
+          {/* CTA Buttons */}
+          <div className="flex flex-wrap items-center gap-4 mb-12">
             <a
               href="#features"
               className="px-8 py-3.5 border border-slate-900 text-slate-900 text-[11px] font-semibold tracking-[0.22em] uppercase hover:bg-slate-900 hover:text-white transition-all duration-300 shadow-sm active:scale-95 bg-white/40 backdrop-blur-sm rounded-full inline-flex items-center gap-2 cursor-pointer"
             >
               <span>DISCOVER PLATFORM</span>
               <span className="text-xs">&rarr;</span>
+            </a>
+            <a
+              href="https://drive.google.com/file/d/1d2yOctTP2mUPG7X5MoXjiM4ztfRkg0kk/view?usp=drive_link"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="px-6 py-3.5 border border-emerald-600/40 bg-emerald-500/10 text-emerald-900 text-[11px] font-semibold tracking-[0.20em] uppercase hover:bg-emerald-600 hover:text-white transition-all duration-300 shadow-sm active:scale-95 rounded-full inline-flex items-center gap-2 cursor-pointer"
+            >
+              <span>WATCH DEMO (150s)</span>
+              <span className="text-xs">&#9658;</span>
             </a>
           </div>
 
