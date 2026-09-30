@@ -155,16 +155,24 @@ function DiurnalDashboardGraph({ demand = 500 }) {
   );
 }
 
-export default function ProductDashboard({ onBack }) {
+export default function ProductDashboard({ onBack, auditData = null, extractedData = null }) {
   // Mode: 'intake' | 'dashboard' (persisted so refresh stays in console if already launched)
   const [viewMode, setViewMode] = useState(() => {
     try {
-      return sessionStorage.getItem('watthacks_console_view_mode') || 'intake';
+      const saved = sessionStorage.getItem('watthacks_console_view_mode');
+      if (saved) return saved;
+      return auditData ? 'dashboard' : 'intake';
     } catch (e) {
-      return 'intake';
+      return auditData ? 'dashboard' : 'intake';
     }
   });
   const [intakeStep, setIntakeStep] = useState(1); // 1: Facility & Tariff | 2: Hardware & Assets | 3: Connected Subsystems
+
+  useEffect(() => {
+    if (auditData) {
+      setViewMode('dashboard');
+    }
+  }, [auditData]);
 
   useEffect(() => {
     try {
@@ -172,20 +180,65 @@ export default function ProductDashboard({ onBack }) {
     } catch (e) {}
   }, [viewMode]);
 
-  // Facility Form State
-  const [formData, setFormData] = useState({
-    facilityName: 'Pune Tech Park (Campus West)',
-    facilityType: 'Commercial IT Park',
-    discom: 'MSEDCL (Maharashtra)',
-    monthlyBill: 850000,
-    demand: 550,
-    solar: 300,
-    bess: 200,
-    hasHvac: true,
-    hasInverter: true,
-    hasEv: true,
-    hasDg: false
-  });
+  // Dynamic Facility Form State (prioritizes actual uploaded/audited facility)
+  const resolveInitialFacility = () => {
+    const src = auditData || extractedData;
+    if (src) {
+      return {
+        facilityName: src.facilityName || src.name || 'Commercial Facility Node',
+        facilityType: src.facilityType || 'Commercial Campus',
+        discom: src.discom || 'State Electricity Distribution Co.',
+        location: src.location || src.facilityAddress || '',
+        gridZone: src.gridZone || '',
+        monthlyBill: Number(src.billAmount || src.monthlyBill) || 850000,
+        demand: Number(src.demand) || 550,
+        solar: Number(src.solarKwp || src.solar) || 0,
+        bess: Number(src.bessKwh || src.bess) || 0,
+        hasHvac: src.hasHvac !== undefined ? Boolean(src.hasHvac) : true,
+        hasInverter: src.hasInverter !== undefined ? Boolean(src.hasInverter) : true,
+        hasEv: src.hasEv !== undefined ? Boolean(src.hasEv) : (Array.isArray(src.equipment) && src.equipment.includes('ev')),
+        hasDg: src.hasDg !== undefined ? Boolean(src.hasDg) : (Array.isArray(src.equipment) && src.equipment.includes('dg'))
+      };
+    }
+    return {
+      facilityName: 'Pune Tech Park (Campus West)',
+      facilityType: 'Commercial IT Park',
+      discom: 'MSEDCL (Maharashtra)',
+      monthlyBill: 850000,
+      demand: 550,
+      solar: 300,
+      bess: 200,
+      hasHvac: true,
+      hasInverter: true,
+      hasEv: true,
+      hasDg: false
+    };
+  };
+
+  const [formData, setFormData] = useState(resolveInitialFacility);
+
+  // Sync state if user navigates in with fresh bill or audit data
+  useEffect(() => {
+    const src = auditData || extractedData;
+    if (src) {
+      setFormData(prev => ({
+        ...prev,
+        facilityName: src.facilityName || src.name || prev.facilityName,
+        facilityType: src.facilityType || prev.facilityType,
+        discom: src.discom || prev.discom,
+        location: src.location || src.facilityAddress || prev.location,
+        gridZone: src.gridZone || prev.gridZone,
+        monthlyBill: Number(src.billAmount || src.monthlyBill) || prev.monthlyBill,
+        demand: Number(src.demand) || prev.demand,
+        solar: Number(src.solarKwp || src.solar) || prev.solar,
+        bess: Number(src.bessKwh || src.bess) || prev.bess,
+        hasHvac: src.hasHvac !== undefined ? Boolean(src.hasHvac) : prev.hasHvac,
+        hasInverter: src.hasInverter !== undefined ? Boolean(src.hasInverter) : prev.hasInverter,
+        hasEv: src.hasEv !== undefined ? Boolean(src.hasEv) : prev.hasEv,
+        hasDg: src.hasDg !== undefined ? Boolean(src.hasDg) : prev.hasDg
+      }));
+    }
+  }, [auditData, extractedData]);
 
   // Live Telemetry state
   const [liveGrid, setLiveGrid] = useState(24);

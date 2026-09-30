@@ -415,22 +415,30 @@ export async function generateBrsrAudit(params = {}) {
   };
 
   // 1. Try Backend API first
+  let backendError = null;
   try {
     const response = await client.post(`/audit/generate`, payload);
     if (response?.data?.audit) {
       return response.data;
     }
+    if (response?.data?.error) {
+      backendError = response.data.error;
+    }
   } catch (backendErr) {
-    console.info('[Audit] Backend endpoint unavailable, engaging direct client-side Gemini 2.5 Flash neural synthesis...');
+    backendError = backendErr?.response?.data?.actualIssue || backendErr?.response?.data?.error || backendErr?.message || 'Backend service unreachable';
+    console.warn('[Audit] Backend endpoint unavailable or failed:', backendError);
   }
 
-  // 2. Direct Client-Side Gemini 2.5 Flash Call (Guaranteed Live AI on Vercel and Standalone)
+  // 2. Direct Client-Side Gemini Call
   const apiKey = resolveClientApiKey();
   const candidateModels = [
     import.meta.env?.VITE_GEMINI_MODEL || 'gemini-2.5-flash',
-    'gemini-flash-latest',
-    'gemini-2.5-flash-lite'
+    'gemini-2.0-flash',
+    'gemini-1.5-flash',
+    'gemini-2.5-flash-lite',
+    'gemini-flash-latest'
   ];
+  let clientError = null;
 
   if (apiKey) {
     const facility = payload.facility;
@@ -600,121 +608,31 @@ export async function generateBrsrAudit(params = {}) {
           }
         } else {
           const errText = await geminiRes.text();
-          console.warn(`[Gemini Direct API] Model ${model} returned status ${geminiRes.status}:`, errText.slice(0, 120));
+          let parsedMsg = '';
+          try {
+            const parsed = JSON.parse(errText);
+            parsedMsg = parsed?.error?.message || errText;
+          } catch(e) {
+            parsedMsg = errText;
+          }
+          clientError = `Gemini API returned status ${geminiRes.status}: ${parsedMsg}`;
+          console.warn(`[Gemini Direct API] Model ${model} returned error:`, clientError);
         }
       } catch (err) {
-        console.warn(`[Gemini Direct Attempt] Model ${model} failed:`, err.message);
+        clientError = err.message || 'Network request failed';
+        console.warn(`[Gemini Direct Attempt] Model ${model} failed:`, clientError);
       }
     }
+  } else {
+    clientError = 'Client-side VITE_GEMINI_API_KEY is not configured';
   }
 
-  // 3. Dynamic mathematical fallback (strictly computed from user's parameters, zero static mock)
-  const fac = payload.facility;
-  const sav = payload.savings;
-  const peakAvoided = Math.round(fac.monthlyBill * 0.22 * 0.78);
-  const rebateCaptured = Math.round(sav.shiftedLoadKwh * 30 * fac.nightRebateRate);
-  const score = fac.powerFactor >= 0.98 ? 88 : fac.powerFactor >= 0.95 ? 82 : fac.powerFactor >= 0.90 ? 74 : 58;
-
-  return {
-    success: true,
-    audit: {
-      source: "Dynamic First-Principles Mathematical Model (CEA Calibrated)",
-      geminiConfigured: false,
-      executiveSummary: `Technical energy and decarbonization audit conducted for ${fac.name} under the ${fac.discom} Time-of-Day (TOD) regulatory framework. With a contracted maximum demand of ${fac.loadKva} kVA and monthly energy expenditure of ₹${fac.monthlyBill.toLocaleString('en-IN')}, the facility has an active flexible load profile spanning ${fac.equipment.join(', ')}. By executing autonomous load shifting of ${sav.shiftedLoadKwh} kWh/day from the evening peak surcharge window (+₹${fac.peakPenaltyRate.toFixed(2)}/kWh) into the off-peak rebate window (-₹${fac.nightRebateRate.toFixed(2)}/kWh), the campus mitigates ₹${sav.monthlySavingsInr.toLocaleString('en-IN')}/month (₹${sav.annualSavingsInr.toLocaleString('en-IN')}/year) while permanently displacing ${sav.monthlyCarbonAvoidedTons} Metric Tons of Scope 2 CO2e monthly against the statutory CEA ${fac.gridZone} baseline.`,
-      facilityEfficiencyScore: score,
-      facilityEfficiencyGrade: score >= 85 ? 'Grade A' : score >= 75 ? 'Grade B' : 'Grade C',
-      kpiSummary: {
-        annualUtilityBaselineInr: fac.monthlyBill * 12,
-        monthlyUtilityBaselineInr: fac.monthlyBill,
-        identifiedTariffLeakageAnnualInr: Math.round(fac.monthlyBill * 0.22 * 12),
-        identifiedTariffLeakageMonthlyInr: Math.round(fac.monthlyBill * 0.22),
-        netAchievableSavingsAnnualInr: sav.annualSavingsInr,
-        netAchievableSavingsMonthlyInr: sav.monthlySavingsInr,
-        carbonAbatementAnnualTons: +(sav.monthlyCarbonAvoidedTons * 12).toFixed(2),
-        carbonAbatementMonthlyTons: sav.monthlyCarbonAvoidedTons,
-        savingsPercentage: +((sav.annualSavingsInr / (fac.monthlyBill * 12)) * 100).toFixed(1),
-        paybackMonths: +(179988 / Math.max(1000, sav.annualSavingsInr) * 12).toFixed(1)
-      },
-      forensicLineItems: [
-        {
-          component: "Time-of-Day (ToD) Peak Surcharges",
-          subText: "18:00 – 22:00 evening surcharge window",
-          currentCostInr: Math.round(fac.monthlyBill * 0.22),
-          auditFinding: `Heavy grid draw during peak penalty hours (+₹${fac.peakPenaltyRate.toFixed(2)}/kWh) under ${fac.discom} creates avoidable surcharge leakage.`,
-          badgeType: "Critical Leakage",
-          optimizedCostInr: Math.round(fac.monthlyBill * 0.22) - peakAvoided,
-          potentialSavingsInr: peakAvoided
-        },
-        {
-          component: "Fixed Contract Demand Charges",
-          subText: `${fac.loadKva} kVA Sanctioned Demand`,
-          currentCostInr: Math.round(fac.loadKva * 490),
-          auditFinding: `Unmanaged motor and chiller startups risk exceeding sanctioned 85% billing threshold, exposing ${fac.name} to 150% demand penal rates.`,
-          badgeType: "Demand Spike Risk",
-          optimizedCostInr: Math.round(fac.loadKva * 410),
-          potentialSavingsInr: Math.round(fac.loadKva * 80)
-        },
-        {
-          component: "Base Daytime Energy Consumption",
-          subText: "Daytime grid import",
-          currentCostInr: Math.round(fac.monthlyBill * 0.52),
-          auditFinding: "Midday cooling loads draw standard grid power during peak solar irradiance windows without thermal pre-cooling.",
-          badgeType: "Base Daytime Import",
-          optimizedCostInr: Math.round(fac.monthlyBill * 0.42),
-          potentialSavingsInr: Math.round(fac.monthlyBill * 0.10)
-        },
-        {
-          component: "Power Factor Incentive / Penalty",
-          subText: `Recorded Power Factor: ${fac.powerFactor}`,
-          currentCostInr: fac.powerFactor < 0.90 ? Math.round(fac.monthlyBill * 0.025) : 0,
-          auditFinding: fac.powerFactor > 0.95 ? 'Maintaining high power factor qualifies for prompt payment statutory rebates.' : 'Reactive draw creates unnecessary penal additions.',
-          badgeType: fac.powerFactor > 0.95 ? 'Prompt Incentive' : fac.powerFactor < 0.90 ? 'Reactive Penalty' : 'Neutral PF',
-          optimizedCostInr: 0,
-          potentialSavingsInr: Math.round(fac.monthlyBill * 0.02)
-        },
-        {
-          component: "State Electricity Duty & Fuel Adjustment (FAC)",
-          subText: "Regulatory pass-through taxes",
-          currentCostInr: Math.round(fac.monthlyBill * 0.09),
-          auditFinding: "State electricity duty and variable FAC scale directly with gross grid energy imported.",
-          badgeType: "Pass-Through Taxes",
-          optimizedCostInr: Math.round(fac.monthlyBill * 0.065),
-          potentialSavingsInr: Math.round(fac.monthlyBill * 0.025)
-        }
-      ],
-      technicalWorkOrders: [
-        {
-          id: "WO-BESS-01",
-          targetAsset: `Battery Energy Storage System (${fac.bessKwh || Math.round(fac.loadKva * 0.4)} kWh LiFePO4)`,
-          protocolTrigger: "Modbus TCP Register 40012: Inverter_Mode = DISCHARGE_PEAK_SHAVE",
-          operatingWindowIST: "18:00 – 22:00 IST",
-          engineeringAction: "Discharge BESS at 0.5C continuous into facility busbar, suppressing utility draw below baseline.",
-          financialImpact: `Avoids +₹${fac.peakPenaltyRate.toFixed(2)}/kWh peak surcharges under ${fac.discom}.`,
-          carbonImpact: "Prevents draw from marginal thermal peakers emitting 685 gCO2/kWh."
-        },
-        {
-          id: "WO-CHILL-02",
-          targetAsset: "Centrifugal Chiller Plant & Primary Thermal Storage",
-          protocolTrigger: "BACnet IP Object AV:3020 (Chilled Water Supply Setpoint = 5.5°C)",
-          operatingWindowIST: "13:00 – 16:30 IST",
-          engineeringAction: "Deep pre-cooling of building thermal mass and chilled water tanks using solar generation, curtailing chiller compressor draw during peak window.",
-          financialImpact: "Captures zero-marginal-cost solar generation and eliminates afternoon chiller ramp.",
-          carbonImpact: "Diverts peak coal generation draw."
-        },
-        {
-          id: "WO-EV-03",
-          targetAsset: "Smart EV Fleet Chargers (OCPP 2.0.1 Smart Charging Profile)",
-          protocolTrigger: "OCPP SetChargingProfile.req (TxDefaultProfile: MaxCurrent = 0A)",
-          operatingWindowIST: "22:30 – 05:30 IST",
-          engineeringAction: "Interlock charging stalls during evening peak hours, deferring high-amperage draw to off-peak night rebate hours.",
-          financialImpact: `Captures -₹${fac.nightRebateRate.toFixed(2)}/kWh statutory night incentive.`,
-          carbonImpact: "Charges with overnight clean wind baseload."
-        }
-      ],
-      auditCertificateBadge: "Certified by WattHacks AI Autonomous Energy Auditor (CEA / BEE Calibrated)",
-      verificationHashSha256: "8f94c" + Date.now().toString(16) + "e92a40b9"
-    }
-  };
+  // 3. DO NOT return a hardcoded fallback audit.
+  // Instead, construct the actual issue and throw so the UI prompts the user to try again later
+  const actualIssue = backendError || clientError || 'Google Gemini API is currently unavailable or returned an error.';
+  const auditError = new Error(actualIssue);
+  auditError.actualIssue = actualIssue;
+  throw auditError;
 }
 
 /**

@@ -129,8 +129,10 @@ async function generateWithGemini({ prompt, fileBuffer, mimeType, modelName }) {
     ...new Set([
       primaryModel,
       'gemini-2.5-flash',
-      'gemini-flash-latest',
+      'gemini-2.0-flash',
+      'gemini-1.5-flash',
       'gemini-2.5-flash-lite',
+      'gemini-flash-latest',
       'gemini-2.5-pro'
     ])
   ];
@@ -337,13 +339,16 @@ export async function extractBillData(fileBuffer, mimeType = 'application/pdf', 
       });
       return parsed;
     } catch (err) {
-      console.warn('Gemini live demo generation failed, using formula:', err.message);
+      console.warn('Gemini live extraction failed:', err.message);
+      if (!allowDemoFallback) {
+        throw new Error(`Gemini live document extraction failed: ${err.message}`);
+      }
     }
   }
 
-  // If no Gemini API key is configured and no fallback allowed, throw informative error
-  if (!configured && !allowDemoFallback) {
-    const error = new Error('GEMINI_API_KEY is not configured in server environment. Set GEMINI_API_KEY in backend/.env.');
+  // If no fallback allowed, throw informative error
+  if (!allowDemoFallback) {
+    const error = new Error('GEMINI_API_KEY is not configured or failed in server environment. Set a valid GEMINI_API_KEY in backend/.env.');
     error.code = 'GEMINI_API_KEY_REQUIRED';
     throw error;
   }
@@ -528,9 +533,15 @@ export async function extractPresetBillData(presetInput = {}) {
 /**
  * Generates an Executive Decarbonization Roadmap & SEBI BRSR Principle 6 Compliance Report
  */
-export async function generateExecutiveAudit(facilityInfo, savingsData, emissionsData = null) {
+export async function generateExecutiveAudit(facilityInfo, savingsData, emissionsData = null, allowFallback = false) {
   const configured = isGeminiConfigured();
   const modelName = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
+
+  if (!configured && !allowFallback) {
+    const err = new Error('Google Gemini API key is not configured in backend/.env. Please configure GEMINI_API_KEY to generate live audits.');
+    err.code = 'GEMINI_API_KEY_REQUIRED';
+    throw err;
+  }
 
   const facility = {
     name: facilityInfo?.name || "Commercial Facility",
@@ -893,7 +904,10 @@ export async function generateExecutiveAudit(facilityInfo, savingsData, emission
 
       return parsed;
     } catch (err) {
-      console.warn('[Gemini Audit Fallback] Inference fallback activated:', err.message);
+      console.warn('[Gemini Audit Error]:', err.message);
+      if (!allowFallback) {
+        throw new Error(`Google Gemini API synthesis failed: ${err.message || 'API service unavailable'}`);
+      }
     }
   }
 

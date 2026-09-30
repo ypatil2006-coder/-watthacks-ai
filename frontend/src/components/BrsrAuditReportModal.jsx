@@ -486,6 +486,7 @@ export default function BrsrAuditReportModal({
 }) {
   const [auditData, setAuditData] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [errorState, setErrorState] = useState(null);
 
   // Live Location & Regional Tariff Intelligence
   const discomStr = typeof formData?.discom === 'string' ? formData.discom : '';
@@ -504,6 +505,7 @@ export default function BrsrAuditReportModal({
     async function fetchAudit() {
       try {
         setLoading(true);
+        setErrorState(null);
         const res = await generateBrsrAudit({
           facilityName: formData.facilityName,
           facilityType: formData.facilityType,
@@ -536,9 +538,15 @@ export default function BrsrAuditReportModal({
 
         if (res?.audit) {
           setAuditData(res.audit);
+          setErrorState(null);
+        } else {
+          throw new Error(res?.error || 'Failed to synthesize audit from Gemini service.');
         }
       } catch (err) {
         console.error('Failed to load audit in modal:', err);
+        const actual = err?.actualIssue || err?.response?.data?.actualIssue || err?.message || 'External Google Gemini API service is currently unavailable.';
+        setErrorState(actual);
+        setAuditData(null);
       } finally {
         setLoading(false);
       }
@@ -760,6 +768,39 @@ export default function BrsrAuditReportModal({
             <div className="py-20 flex flex-col items-center justify-center gap-3 text-slate-500">
               <div className="w-8 h-8 rounded-full border-2 border-emerald-500 border-t-transparent animate-spin"></div>
               <span className="font-mono text-xs">Assembling SEBI BRSR Audit with Vector Graphs...</span>
+            </div>
+          ) : (errorState || !auditData) ? (
+            <div className="py-16 px-4 flex flex-col items-center justify-center text-center space-y-5 max-w-lg mx-auto">
+              <div className="w-14 h-14 rounded-full bg-rose-100 border border-rose-300 text-rose-600 flex items-center justify-center shadow-inner">
+                <AlertTriangle className="w-7 h-7 text-rose-600" />
+              </div>
+              <div className="space-y-1.5">
+                <span className="text-[10px] font-mono uppercase text-rose-700 font-semibold px-2.5 py-0.5 rounded-full bg-rose-50 border border-rose-200">
+                  AI Service Notice
+                </span>
+                <h3 className="text-xl font-semibold text-slate-900">
+                  Please Try Again Later
+                </h3>
+                <p className="text-xs text-slate-500 font-light max-w-sm mx-auto">
+                  WattHacks AI was unable to synthesize the live SEBI BRSR audit due to an external API service issue. Hardcoded fallback has been disabled.
+                </p>
+              </div>
+              <div className="w-full p-3.5 rounded-xl bg-rose-50/80 border border-rose-200 text-left text-xs font-mono space-y-1">
+                <div className="font-semibold text-rose-900 text-[10px] uppercase flex items-center gap-1">
+                  <span>Actual Issue Encountered:</span>
+                </div>
+                <p className="text-rose-800 break-words font-light bg-white/70 p-2 rounded border border-rose-200/50">
+                  {errorState || 'Google Gemini API is currently unavailable or returned an error.'}
+                </p>
+              </div>
+              <div className="flex items-center gap-3 pt-2">
+                <button
+                  onClick={onClose}
+                  className="px-5 py-2.5 rounded-full border border-slate-300 text-slate-700 hover:bg-slate-100 text-xs font-mono transition-all active:scale-95 cursor-pointer"
+                >
+                  Close Modal
+                </button>
+              </div>
             </div>
           ) : (
             <>

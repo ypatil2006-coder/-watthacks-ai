@@ -21,7 +21,9 @@ import {
   Printer,
   Sparkles,
   Cpu,
-  Loader2
+  Loader2,
+  RotateCcw,
+  AlertCircle
 } from 'lucide-react';
 import BrsrAuditReportModal from './BrsrAuditReportModal';
 import { generateBrsrAudit } from '../services/api';
@@ -484,6 +486,7 @@ export default function AuditReportPage({ auditData, onBackToUpload, onLaunchCon
   const [downloadModal, setDownloadModal] = useState(false);
   const [aiAudit, setAiAudit] = useState(null);
   const [loadingAi, setLoadingAi] = useState(true);
+  const [errorState, setErrorState] = useState(null);
 
   // Exact user-provided / scraped inputs
   const billAmount = Number(auditData?.billAmount) || 845620;
@@ -594,59 +597,61 @@ export default function AuditReportPage({ auditData, onBackToUpload, onLaunchCon
   const dynamicSha256 = `8f94c${Math.abs(rawHash).toString(16).padStart(8, '0')}e92a40b9918731fa2143bc0902`;
 
   // Fetch Live Gemini AI Executive Audit on Mount or Input Change
-  useEffect(() => {
-    let isMounted = true;
-    async function fetchLiveAudit() {
-      setLoadingAi(true);
-      const startTime = Date.now();
-      try {
-        const res = await generateBrsrAudit({
-          facilityName: auditData?.facilityName || 'Commercial Facility',
-          facilityType: auditData?.facilityType || 'Commercial Campus',
-          discom: auditData?.discom || 'MSEDCL (Maharashtra)',
-          region: location,
-          gridZone: gridZone,
-          ceaBaseline: ceaBaseline,
-          peakPenaltyRate: peakPenaltyRate,
-          nightRebateRate: nightRebateRate,
-          demand: demand,
-          monthlyBill: billAmount,
-          solar: solar,
-          bess: bess,
-          hasDg: hasDg,
-          powerFactor: powerFactor,
-          equipment: auditData?.equipment || [
-            auditData?.hasHvac && 'hvac',
-            auditData?.hasInverter && 'inverter',
-            auditData?.hasEv && 'ev',
-            hasDg && 'dg'
-          ].filter(Boolean),
-          monthlySavingsInr: monthlySavingsEst,
-          annualSavingsInr: annualSavingsEst,
-          carbonAbatedTons: +(carbonTonsAbated / 12).toFixed(2),
-          shiftedKwh: Math.round(demand * 0.52)
-        });
+  const fetchLiveAudit = async () => {
+    setLoadingAi(true);
+    setErrorState(null);
+    const startTime = Date.now();
+    try {
+      const res = await generateBrsrAudit({
+        facilityName: auditData?.facilityName || 'Commercial Facility',
+        facilityType: auditData?.facilityType || 'Commercial Campus',
+        discom: auditData?.discom || 'MSEDCL (Maharashtra)',
+        region: location,
+        gridZone: gridZone,
+        ceaBaseline: ceaBaseline,
+        peakPenaltyRate: peakPenaltyRate,
+        nightRebateRate: nightRebateRate,
+        demand: demand,
+        monthlyBill: billAmount,
+        solar: solar,
+        bess: bess,
+        hasDg: hasDg,
+        powerFactor: powerFactor,
+        equipment: auditData?.equipment || [
+          auditData?.hasHvac && 'hvac',
+          auditData?.hasInverter && 'inverter',
+          auditData?.hasEv && 'ev',
+          hasDg && 'dg'
+        ].filter(Boolean),
+        monthlySavingsInr: monthlySavingsEst,
+        annualSavingsInr: annualSavingsEst,
+        carbonAbatedTons: +(carbonTonsAbated / 12).toFixed(2),
+        shiftedKwh: Math.round(demand * 0.52)
+      });
 
-        // Ensure neural synthesis progress screen stays mounted for at least 2.2 seconds
-        const elapsed = Date.now() - startTime;
-        if (elapsed < 2200) {
-          await new Promise(r => setTimeout(r, 2200 - elapsed));
-        }
-
-        if (isMounted && res?.audit) {
-          setAiAudit(res.audit);
-        }
-      } catch (err) {
-        console.warn('API audit fetch fallback:', err.message);
-      } finally {
-        if (isMounted) {
-          setLoadingAi(false);
-        }
+      const elapsed = Date.now() - startTime;
+      if (elapsed < 1200) {
+        await new Promise(r => setTimeout(r, 1200 - elapsed));
       }
-    }
 
+      if (res?.audit) {
+        setAiAudit(res.audit);
+        setErrorState(null);
+      } else {
+        throw new Error(res?.error || 'Failed to receive valid audit from Gemini API.');
+      }
+    } catch (err) {
+      console.warn('API audit fetch failed:', err.message);
+      const actual = err?.actualIssue || err?.response?.data?.actualIssue || err?.response?.data?.error || err?.message || 'External Google Gemini API service is currently unavailable.';
+      setErrorState(actual);
+      setAiAudit(null);
+    } finally {
+      setLoadingAi(false);
+    }
+  };
+
+  useEffect(() => {
     fetchLiveAudit();
-    return () => { isMounted = false; };
   }, [
     auditData?.facilityName,
     auditData?.discom,
@@ -748,6 +753,54 @@ export default function AuditReportPage({ auditData, onBackToUpload, onLaunchCon
               <Loader2 className="w-4 h-4 text-emerald-600 animate-spin shrink-0" />
               <span className="text-emerald-950 font-semibold">3. Prompting Gemini 2.5 Flash for forensic line items & SCADA directives...</span>
             </div>
+          </div>
+        </div>
+      ) : (errorState || !aiAudit) ? (
+        <div className="liquid-glass rounded-3xl p-8 sm:p-12 shadow-2xl border border-rose-300/80 max-w-2xl mx-auto text-center space-y-6 animate-fadeIn my-12 bg-white/95">
+          <div className="w-16 h-16 rounded-full bg-rose-100 border border-rose-300 text-rose-600 flex items-center justify-center mx-auto shadow-inner">
+            <AlertTriangle className="w-8 h-8 text-rose-600 animate-pulse" />
+          </div>
+
+          <div className="space-y-2">
+            <span className="text-xs font-mono uppercase text-rose-700 font-semibold tracking-wider px-3 py-1 rounded-full bg-rose-50 border border-rose-200 inline-block">
+              AI Service Notice
+            </span>
+            <h2 className="text-2xl sm:text-3xl font-semibold text-slate-900 tracking-tight">
+              Please Try Again Later
+            </h2>
+            <p className="text-sm text-slate-600 font-light max-w-md mx-auto">
+              WattHacks AI was unable to complete the live neural audit generation for <strong>{auditData?.facilityName || 'this facility'}</strong> due to an external API service issue. Hardcoded or simulated fallback data has been disabled.
+            </p>
+          </div>
+
+          {/* Actual issue explanation */}
+          <div className="p-4 rounded-2xl bg-rose-50/80 border border-rose-200 text-left text-xs font-mono space-y-2">
+            <div className="font-semibold text-rose-900 flex items-center gap-1.5 uppercase text-[11px]">
+              <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+              <span>Actual Issue Encountered:</span>
+            </div>
+            <p className="text-rose-800 break-words font-light bg-white/80 p-2.5 rounded-lg border border-rose-200/60">
+              {errorState || 'Google Gemini API is currently unavailable or returned an error.'}
+            </p>
+          </div>
+
+          {/* Action buttons */}
+          <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3">
+            <button
+              onClick={fetchLiveAudit}
+              className="w-full sm:w-auto px-6 py-3 rounded-full bg-slate-900 hover:bg-slate-800 text-white text-xs font-mono font-semibold transition-all shadow-md active:scale-95 flex items-center justify-center gap-2 cursor-pointer"
+            >
+              <RotateCcw className="w-3.5 h-3.5 text-emerald-400" />
+              <span>Try Again Now</span>
+            </button>
+
+            <button
+              onClick={onBackToUpload}
+              className="w-full sm:w-auto px-6 py-3 rounded-full border border-slate-300 hover:bg-slate-100 text-slate-700 text-xs font-mono transition-all active:scale-95 flex items-center justify-center gap-2 cursor-pointer"
+            >
+              <ArrowLeft className="w-3.5 h-3.5" />
+              <span>Back to Facility Input</span>
+            </button>
           </div>
         </div>
       ) : (
@@ -899,9 +952,7 @@ export default function AuditReportPage({ auditData, onBackToUpload, onLaunchCon
         ) : (
           <div className="space-y-4 text-xs text-slate-700 leading-relaxed">
             <p className="bg-slate-50/80 p-4 rounded-2xl border border-slate-200 font-light leading-relaxed">
-              {aiAudit?.executiveSummary || 
-                `Technical energy and decarbonization audit conducted for ${auditData?.facilityName || 'Commercial Facility'} under the ${auditData?.discom || 'MSEDCL'} Time-of-Day (TOD) regulatory framework. With a contracted maximum demand of ${demand} kVA and monthly energy expenditure of ₹${billAmount.toLocaleString('en-IN')}, the facility has an active flexible load profile spanning ${auditData?.equipment?.join(', ') || 'HVAC, BESS, Inverters'}. By executing autonomous load shifting of ${Math.round(demand * 0.52)} kWh/day from the evening peak surcharge window into the off-peak rebate window, the campus mitigates ₹${monthlySavingsEst.toLocaleString('en-IN')}/month (₹${annualSavingsEst.toLocaleString('en-IN')}/year) while permanently displacing ${+(carbonTonsAbated / 12).toFixed(2)} Metric Tons of Scope 2 CO2e monthly against the statutory CEA ${gridZone} baseline.`
-              }
+              {aiAudit?.executiveSummary || 'No executive summary provided by Gemini API.'}
             </p>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
@@ -957,53 +1008,7 @@ export default function AuditReportPage({ auditData, onBackToUpload, onLaunchCon
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200 text-slate-700">
-              {(aiAudit?.forensicLineItems || [
-                {
-                  component: "Time-of-Day (ToD) Peak Surcharges",
-                  subText: "18:00 – 22:00 evening surcharge window",
-                  currentCostInr: peakSurcharge,
-                  auditFinding: "Heavy grid draw during peak penalty hours without battery substitution creates avoidable surcharge leakage.",
-                  badgeType: "Critical Leakage",
-                  optimizedCostInr: Math.round(peakSurcharge * 0.22),
-                  potentialSavingsInr: Math.round(peakSurcharge * 0.78)
-                },
-                {
-                  component: "Fixed Contract Demand Charges",
-                  subText: `${demand} kVA Sanctioned Demand @ ₹490/kVA`,
-                  currentCostInr: Math.round(demand * 490),
-                  auditFinding: "Unmanaged motor and chiller startups risk exceeding sanctioned 85% billing threshold, exposing facility to 150% demand penal rates.",
-                  badgeType: "Demand Spike Risk",
-                  optimizedCostInr: Math.round(demand * 410),
-                  potentialSavingsInr: Math.round(demand * 80)
-                },
-                {
-                  component: "Base Daytime Energy Consumption",
-                  subText: `${units.toLocaleString('en-IN')} kWh monthly base energy units`,
-                  currentCostInr: Math.round(units * 4.8),
-                  auditFinding: "Midday cooling loads draw standard grid power during peak solar irradiance windows without thermal pre-cooling.",
-                  badgeType: "Base Daytime Import",
-                  optimizedCostInr: Math.round(units * 3.7),
-                  potentialSavingsInr: Math.round(units * 1.1)
-                },
-                {
-                  component: "Power Factor Incentive / Penalty",
-                  subText: `Recorded Power Factor: ${powerFactor}`,
-                  currentCostInr: powerFactor < 0.90 ? pfRebateOrPenaltyInr : 0,
-                  auditFinding: pfStatusText,
-                  badgeType: powerFactor > 0.95 ? 'Prompt Incentive' : powerFactor < 0.90 ? 'Reactive Penalty' : 'Neutral PF',
-                  optimizedCostInr: powerFactor > 0.95 ? -pfRebateOrPenaltyInr : -Math.round(billAmount * 0.035),
-                  potentialSavingsInr: powerFactor > 0.95 ? pfRebateOrPenaltyInr : Math.round(billAmount * 0.035)
-                },
-                {
-                  component: "Electricity Duty & Fuel Adjustment (FAC)",
-                  subText: "State regulatory pass-through charges",
-                  currentCostInr: Math.round(billAmount * 0.09),
-                  auditFinding: "State electricity duty and variable FAC scale directly with gross grid energy imported.",
-                  badgeType: "Pass-Through Taxes",
-                  optimizedCostInr: Math.round(billAmount * 0.065),
-                  potentialSavingsInr: Math.round(billAmount * 0.025)
-                }
-              ]).map((row, idx) => (
+              {(aiAudit?.forensicLineItems || []).map((row, idx) => (
                 <tr key={idx} className="hover:bg-amber-50/40 transition-colors">
                   <td className="py-3.5 px-3 font-semibold text-slate-900">
                     {row.component}
@@ -1152,29 +1157,7 @@ export default function AuditReportPage({ auditData, onBackToUpload, onLaunchCon
           </p>
 
           <div className="space-y-2.5 font-mono text-xs pt-1">
-            {(aiAudit?.dispatchSchedule || [
-              {
-                timeWindow: "00:00 – 06:00",
-                title: "Off-Peak Night Arbitrage",
-                action: "CHARGE",
-                actionColor: "blue",
-                description: "Charge BESS at off-peak rebate tariff (₹3.50/kWh)"
-              },
-              {
-                timeWindow: "09:00 – 16:00",
-                title: "Solar Peak & Pre-Cooling",
-                action: "SOLAR LOAD",
-                actionColor: "amber",
-                description: "Pre-cool building HVAC thermal mass with captive solar"
-              },
-              {
-                timeWindow: "17:00 – 22:00",
-                title: "Peak Surcharge Elimination",
-                action: "DISCHARGE",
-                actionColor: "emerald",
-                description: "Discharge BESS directly to zero out grid peak penalty draw"
-              }
-            ]).map((sched, idx) => (
+            {(aiAudit?.dispatchSchedule || []).map((sched, idx) => (
               <div key={idx} className={`p-2.5 rounded-xl border flex items-center justify-between ${
                 sched.actionColor === 'blue' ? 'bg-blue-500/10 border-blue-500/20 text-blue-900' :
                 sched.actionColor === 'amber' ? 'bg-amber-500/10 border-amber-500/20 text-amber-900' :
@@ -1215,26 +1198,7 @@ export default function AuditReportPage({ auditData, onBackToUpload, onLaunchCon
         </div>
 
         <div className="space-y-3">
-          {(aiAudit?.technicalWorkOrders || aiAudit?.workOrders || [
-            {
-              id: 'WO-BESS-01',
-              targetAsset: `Battery Energy Storage System (${bess || Math.round(demand * 0.4)} kWh LiFePO4)`,
-              protocolTrigger: 'Modbus TCP Register 40012: Inverter_Mode = DISCHARGE_PEAK_SHAVE',
-              operatingWindowIST: '18:00 - 21:30 IST (Zone D Peak Window)',
-              engineeringAction: `Discharge BESS at 0.5C continuous (${Math.round((bess || demand * 0.4) * 0.5)} kW) into facility busbar, suppressing utility draw below baseline.`,
-              financialImpact: `Avoids ₹${Math.round(monthlySavingsEst * 0.48).toLocaleString('en-IN')}/mo in avoidable Time-of-Day peak tariff surcharges.`,
-              carbonImpact: 'Prevents draw from marginal thermal peakers emitting 685 gCO2/kWh.'
-            },
-            {
-              id: 'WO-HVAC-02',
-              targetAsset: `Central Chilled Water Thermal Storage Plant (${Math.round(demand * 0.35)} kW thermal load)`,
-              protocolTrigger: 'BACnet IP Object AV-302: Chilled_Water_Setpoint = 5.5°C',
-              operatingWindowIST: '14:00 - 16:30 IST (Zone C Solar Peak)',
-              engineeringAction: 'Pre-cool building thermal mass and thermal storage ice/water tanks to 22.0°C during maximum solar generation, then float chillers at 40% partial load during peak hours.',
-              financialImpact: `Eliminates ${Math.round(demand * 0.28)} kW of peak cooling electrical demand with zero ASHRAE 55 thermal comfort breach.`,
-              carbonImpact: 'Maximizes captive utilization of clean rooftop solar generation.'
-            }
-          ]).map((wo, i) => (
+          {(aiAudit?.technicalWorkOrders || aiAudit?.workOrders || []).map((wo, i) => (
             <div key={i} className="p-4 rounded-2xl bg-white/80 border border-slate-200 space-y-1.5 shadow-sm">
               <div className="flex items-center justify-between">
                 <span className="font-semibold text-slate-900 text-xs font-mono">{i + 1}. [{wo.id}] {wo.targetAsset}</span>

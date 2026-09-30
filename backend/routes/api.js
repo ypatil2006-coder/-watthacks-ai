@@ -703,7 +703,8 @@ router.post('/audit/generate', async (req, res) => {
       shiftedLoadKwh: shifted
     };
 
-    const audit = await generateExecutiveAudit(facilityInfo, savingsData);
+    const allowDemo = req.query.demo === 'true';
+    const audit = await generateExecutiveAudit(facilityInfo, savingsData, null, allowDemo);
     res.json({
       success: true,
       audit,
@@ -714,7 +715,12 @@ router.post('/audit/generate', async (req, res) => {
       ]
     });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error('Audit generation error:', err.message);
+    res.status(502).json({
+      success: false,
+      error: err.message || "Failed to generate AI audit",
+      actualIssue: err.message || "Gemini API service unavailable"
+    });
   }
 });
 
