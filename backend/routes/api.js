@@ -21,7 +21,10 @@ import {
   synthesizeEquipmentFromContractDemand,
   calculateCampusFlexCapacity
 } from '../services/equipmentService.js';
+import User from '../models/User.js';
+import AuditReport from '../models/AuditReport.js';
 import { requireAuth, optionalAuth } from '../middleware/authMiddleware.js';
+import { isDBConnected } from '../config/db.js';
 
 const router = express.Router();
 const upload = multer({
@@ -29,10 +32,13 @@ const upload = multer({
   limits: { fileSize: 15 * 1024 * 1024 } // 15 MB limit
 });
 
-const JWT_SECRET = process.env.JWT_SECRET || 'watthacks_jwt_secret_dev_2026';
+const JWT_SECRET = process.env.JWT_SECRET || 'watthacks_jwt_secret_pune_sustainability_2026';
 
-// In-memory demo store for registered users
-const users = [];
+// In-memory fallback cache when database is in standalone mode
+const fallbackUsers = [];
+
+// Helper to verify if an ID is a valid 24-character hexadecimal MongoDB ObjectId
+const isMongoId = (id) => typeof id === 'string' && /^[0-9a-fA-F]{24}$/.test(id);
 
 // ==========================================
 // 0. API CATALOG & DISCOVERY
@@ -43,12 +49,18 @@ router.get('/', (req, res) => {
     version: "2.0.0",
     theme: "AI for Sustainability (MSEDCL TOD Arbitrage & Western Grid Decarbonization)",
     geminiConfigured: isGeminiConfigured(),
+    databaseConnected: isDBConnected(),
+    databaseType: "MongoDB Atlas",
     activeTimeIST: new Date().toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata' }),
     endpoints: {
       auth: [
-        "POST /api/auth/register - Register facility manager account",
-        "POST /api/auth/login - Login (Supports demo@watthacks.ai)",
-        "GET /api/auth/me - Get current user profile (JWT required)"
+        "POST /api/auth/register - Register facility manager (MongoDB + bcrypt + JWT)",
+        "POST /api/auth/login - Login (Supports demo@watthacks.ai bypass)",
+        "GET /api/auth/me - Authenticated user profile and saved audits (JWT required)"
+      ],
+      database: [
+        "GET /api/audit/history - Fetch past sustainability audits from MongoDB",
+        "POST /api/audit/save - Save generated audit report to MongoDB"
       ],
       grid: [
         "GET /api/grid/telemetry?region=pune - Real-time diurnal carbon & TOD status",
@@ -81,7 +93,7 @@ router.get('/', (req, res) => {
 });
 
 // ==========================================
-// 1. AUTHENTICATION & MULTI-TENANCY
+// 1. AUTHENTICATION & MULTI-TENANCY (MONGODB + BCRYPT + JWT)
 // ==========================================
 const registerSchema = z.object({
   email: z.string().email(),
@@ -95,100 +107,309 @@ const registerSchema = z.object({
 router.post('/auth/register', async (req, res) => {
   try {
     const validated = registerSchema.parse(req.body);
-    const existing = users.find(u => u.email === validated.email);
+    const normalizedEmail = validated.email.toLowerCase().trim();
+
+    if (isDBConnected()) {
+      try {
+        const existing = await User.findOne({ email: normalizedEmail });
+        if (existing) {
+          return res.status(409).json({ success: false, error: 'User with this email already exists' });
+        }
+
+        const user = new User({
+          email: normalizedEmail,
+          password: validated.password, // hashed automatically via pre-save hook
+          name: validated.name || normalizedEmail.split('@')[0],
+          facilityName: validated.facilityName || 'Commercial Facility',
+          region: validated.region || 'pune',
+          contractLoadKva: validated.contractLoadKva || 500
+        });
+        await user.save();
+
+        const token = jwt.sign(
+          { id: user._id.toString(), email: user.email, name: user.name, facilityName: user.facilityName },
+          JWT_SECRET,
+          { expiresIn: '7d' }
+        );
+
+        return res.status(201).json({
+          success: true,
+          token,
+          user: {
+            id: user._id,
+            email: user.email,
+            name: user.name,
+            facilityName: user.facilityName,
+            region: user.region,
+            contractLoadKva: user.contractLoadKva
+          }
+        });
+      } catch (dbErr) {
+        console.warn('MongoDB register notice (falling back to memory):', dbErr.message);
+      }
+    }
+
+    // Standalone fallback if MongoDB Atlas is offline
+    const existing = fallbackUsers.find(u => u.email === normalizedEmail);
     if (existing) {
-      return res.status(409).json({ error: 'User with this email already exists' });
+      return res.status(409).json({ success: false, error: 'User with this email already exists' });
     }
 
     const hashedPassword = await bcrypt.hash(validated.password, 10);
-    const user = {
+    const fallbackUser = {
       id: `usr-${Date.now()}`,
-      email: validated.email,
-      name: validated.name || validated.email.split('@')[0],
+      email: normalizedEmail,
+      name: validated.name || normalizedEmail.split('@')[0],
       password: hashedPassword,
-      facility: {
-        name: validated.facilityName || "Commercial Facility",
-        region: validated.region || "pune",
-        loadKva: validated.contractLoadKva || 500
-      }
+      facilityName: validated.facilityName || "Commercial Facility",
+      region: validated.region || "pune",
+      contractLoadKva: validated.contractLoadKva || 500
     };
-    users.push(user);
+    fallbackUsers.push(fallbackUser);
 
-    const token = jwt.sign({ id: user.id, email: user.email }, JWT_SECRET, { expiresIn: '7d' });
+    const token = jwt.sign(
+      { id: fallbackUser.id, email: fallbackUser.email, name: fallbackUser.name, facilityName: fallbackUser.facilityName },
+      JWT_SECRET,
+      { expiresIn: '7d' }
+    );
+
     res.status(201).json({
       success: true,
       token,
-      user: { id: user.id, email: user.email, name: user.name, facility: user.facility }
+      user: {
+        id: fallbackUser.id,
+        email: fallbackUser.email,
+        name: fallbackUser.name,
+        facilityName: fallbackUser.facilityName,
+        region: fallbackUser.region,
+        contractLoadKva: fallbackUser.contractLoadKva
+      }
     });
   } catch (err) {
-    res.status(400).json({ error: err.message });
+    res.status(400).json({ success: false, error: err.message });
   }
 });
 
 const loginSchema = z.object({
   email: z.string().email(),
-  password: z.string().min(1)
+  password: z.string().min(1, "Password is required")
 });
 
 router.post('/auth/login', async (req, res) => {
   try {
     const validated = loginSchema.parse(req.body);
-    const { email, password } = validated;
+    const normalizedEmail = validated.email.toLowerCase().trim();
 
-    // Fast evaluator bypass
-    if (email === 'demo@watthacks.ai' || email === 'admin@watthacks.ai') {
-      const token = jwt.sign({ id: 'demo-user', email }, JWT_SECRET, { expiresIn: '7d' });
+    // ⚡ Fast Evaluator Demo Bypass
+    if (normalizedEmail === 'demo@watthacks.ai' || normalizedEmail === 'admin@watthacks.ai') {
+      const demoToken = jwt.sign(
+        { id: 'demo-evaluator-id', email: normalizedEmail, name: 'Facility Director (Pune)', facilityName: 'Hinjewadi Tech Hub - Tower B' },
+        JWT_SECRET,
+        { expiresIn: '7d' }
+      );
       return res.json({
         success: true,
-        token,
+        token: demoToken,
         user: {
-          id: 'demo-user',
+          id: 'demo-evaluator-id',
           name: 'Facility Director (Pune)',
-          email,
-          facility: {
-            name: "Hinjewadi Tech Hub - Tower B",
-            discom: "MSEDCL",
-            region: "pune",
-            loadKva: 500
-          }
+          email: normalizedEmail,
+          facilityName: "Hinjewadi Tech Hub - Tower B",
+          discom: "MSEDCL",
+          region: "pune",
+          contractLoadKva: 500
         }
       });
     }
 
-    const user = users.find(u => u.email === email);
+    if (isDBConnected()) {
+      try {
+        const user = await User.findOne({ email: normalizedEmail });
+        if (user) {
+          const isMatch = await user.comparePassword(validated.password);
+          if (!isMatch) {
+            return res.status(401).json({ success: false, error: 'Invalid email or password' });
+          }
+
+          const token = jwt.sign(
+            { id: user._id.toString(), email: user.email, name: user.name, facilityName: user.facilityName },
+            JWT_SECRET,
+            { expiresIn: '7d' }
+          );
+
+          return res.json({
+            success: true,
+            token,
+            user: {
+              id: user._id,
+              email: user.email,
+              name: user.name,
+              facilityName: user.facilityName,
+              region: user.region,
+              contractLoadKva: user.contractLoadKva
+            }
+          });
+        }
+      } catch (dbErr) {
+        console.warn('MongoDB login notice (checking fallback store):', dbErr.message);
+      }
+    }
+
+    // Fallback store check
+    const user = fallbackUsers.find(u => u.email === normalizedEmail);
     if (!user) {
-      return res.status(401).json({ error: 'Invalid credentials' });
+      return res.status(401).json({
+        success: false,
+        error: `Account '${normalizedEmail}' not found. Please click "Register Facility" to create your account first, or use "Instant Demo".`
+      });
     }
 
-    const isMatch = await bcrypt.compare(password, user.password);
+    const isMatch = await bcrypt.compare(validated.password, user.password);
     if (!isMatch) {
-      return res.status(401).json({ error: 'Invalid credentials' });
+      return res.status(401).json({ success: false, error: 'Invalid email or password' });
     }
 
-    const token = jwt.sign({ id: user.id, email: user.email }, JWT_SECRET, { expiresIn: '7d' });
+    const token = jwt.sign(
+      { id: user.id, email: user.email, name: user.name, facilityName: user.facilityName },
+      JWT_SECRET,
+      { expiresIn: '7d' }
+    );
+
     res.json({
       success: true,
       token,
-      user: { id: user.id, email: user.email, name: user.name, facility: user.facility }
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        facilityName: user.facilityName,
+        region: user.region,
+        contractLoadKva: user.contractLoadKva
+      }
     });
   } catch (err) {
-    res.status(400).json({ error: err.message });
+    res.status(400).json({ success: false, error: err.message });
   }
 });
 
-router.get('/auth/me', requireAuth, (req, res) => {
-  const user = users.find(u => u.id === req.user.id) || {
-    id: req.user.id,
-    email: req.user.email,
-    name: 'Facility Director (Pune)',
-    facility: {
-      name: "Hinjewadi Tech Hub - Tower B",
-      discom: "MSEDCL",
-      region: "pune",
-      loadKva: 500
+router.get('/auth/me', requireAuth, async (req, res) => {
+  try {
+    let userProfile = null;
+    let savedAudits = [];
+
+    const userId = req.user?.id;
+    const hasValidMongoId = isMongoId(userId);
+
+    if (isDBConnected()) {
+      try {
+        if (hasValidMongoId) {
+          userProfile = await User.findById(userId).select('-password');
+        }
+        if (userId) {
+          savedAudits = await AuditReport.find({ userId }).sort({ createdAt: -1 }).limit(10);
+        }
+      } catch (dbErr) {
+        console.warn('MongoDB query notice in /auth/me:', dbErr.message);
+      }
     }
-  };
-  res.json({ success: true, user });
+
+    if (!userProfile && !hasValidMongoId) {
+      const fb = fallbackUsers.find(u => u.id === userId || u.email === req.user?.email);
+      if (fb) {
+        userProfile = {
+          id: fb.id,
+          email: fb.email,
+          name: fb.name,
+          facilityName: fb.facilityName,
+          region: fb.region,
+          contractLoadKva: fb.contractLoadKva
+        };
+      }
+    }
+
+    if (!userProfile) {
+      userProfile = {
+        id: userId || 'demo-evaluator-id',
+        email: req.user?.email || 'demo@watthacks.ai',
+        name: req.user?.name || (req.user?.email ? req.user.email.split('@')[0] : 'Facility Director (Pune)'),
+        facilityName: req.user?.facilityName || 'Hinjewadi Tech Hub - Tower B',
+        region: 'pune',
+        contractLoadKva: 500
+      };
+    }
+
+    res.json({
+      success: true,
+      user: userProfile,
+      savedAudits,
+      database: isDBConnected() ? "MongoDB Atlas Live (Cluster0 Cloud)" : "Standalone Session"
+    });
+  } catch (err) {
+    console.error('Safe fallback in /auth/me route:', err.message);
+    res.json({
+      success: true,
+      user: {
+        id: req.user?.id || 'demo-evaluator-id',
+        email: req.user?.email || 'demo@watthacks.ai',
+        name: req.user?.name || 'Facility Director (Pune)',
+        facilityName: req.user?.facilityName || 'Hinjewadi Tech Hub - Tower B',
+        region: 'pune',
+        contractLoadKva: 500
+      },
+      savedAudits: [],
+      database: "Standalone Session"
+    });
+  }
+});
+
+// Save Audit Report to MongoDB
+router.post('/audit/save', optionalAuth, async (req, res) => {
+  try {
+    const b = req.body || {};
+    const auditData = {
+      userId: req.user?.id || null,
+      facilityName: b.facilityName || b.facility?.name || "Hinjewadi Commercial Campus",
+      region: b.region || "Pune, Maharashtra",
+      discom: b.discom || "MSEDCL (Maharashtra)",
+      grade: b.grade || "Grade A",
+      billedUnitsKwh: Number(b.billedUnitsKwh || b.energyUnits || 0),
+      monthlySavingsInr: Number(b.monthlySavingsInr || b.savingsInr || 0),
+      carbonDivertedKg: Number(b.carbonDivertedKg || b.carbonKg || 0),
+      verificationHashSha256: b.verificationHashSha256 || `audit-${Date.now().toString(16)}`
+    };
+
+    if (isDBConnected()) {
+      try {
+        const record = new AuditReport(auditData);
+        await record.save();
+        return res.status(201).json({ success: true, savedToDatabase: true, audit: record });
+      } catch (dbErr) {
+        console.warn('MongoDB save notice (falling back to session response):', dbErr.message);
+      }
+    }
+
+    res.status(201).json({ success: true, savedToDatabase: false, audit: auditData, note: "Saved in standalone session" });
+  } catch (err) {
+    res.status(400).json({ success: false, error: err.message });
+  }
+});
+
+// Fetch Audit History from MongoDB
+router.get('/audit/history', optionalAuth, async (req, res) => {
+  try {
+    if (isDBConnected()) {
+      try {
+        const query = req.user?.id ? { userId: req.user.id } : {};
+        const audits = await AuditReport.find(query).sort({ createdAt: -1 }).limit(20);
+        return res.json({ success: true, audits, count: audits.length });
+      } catch (dbErr) {
+        console.warn('MongoDB history query notice:', dbErr.message);
+      }
+    }
+    res.json({ success: true, audits: [], count: 0, note: "Standalone session mode" });
+  } catch (err) {
+    res.json({ success: true, audits: [], count: 0, note: "Database offline fallback" });
+  }
 });
 
 // ==========================================
@@ -277,8 +498,20 @@ router.get('/gemini/status', (req, res) => {
   });
 });
 
+router.get('/db/status', (req, res) => {
+  const connected = isDBConnected();
+  res.json({
+    success: true,
+    status: connected ? "online" : "offline",
+    database: "MongoDB Atlas Cloud",
+    cluster: "cluster0.ihw0jms.mongodb.net",
+    databaseName: "watthacks",
+    message: connected ? "🍃 Connected to official MongoDB Atlas servers" : "Connecting to official MongoDB Atlas servers..."
+  });
+});
+
 // ==========================================
-// 3. LOAD SHIFT & TARIFF ARBITRAGE OPTIMIZER
+// 2. LOAD SHIFT & TARIFF ARBITRAGE OPTIMIZER
 // ==========================================
 const shiftSchema = z.object({
   flexibleLoadKwh: z.number().positive().optional(),
@@ -291,7 +524,7 @@ const shiftSchema = z.object({
   region: z.string().optional().default('pune')
 });
 
-router.post('/optimize/shift', optionalAuth, (req, res) => {
+router.post('/optimize/shift', (req, res) => {
   try {
     const validated = shiftSchema.parse(req.body);
     const peakLoad = validated.peakLoadKwh || validated.peakLoadKw || 480;
@@ -318,7 +551,7 @@ router.post('/optimize/shift', optionalAuth, (req, res) => {
 });
 
 // ==========================================
-// 4. SCOPE 1 & SCOPE 2 GHG ACCOUNTING
+// 3. SCOPE 1 & SCOPE 2 GHG ACCOUNTING
 // ==========================================
 const emissionsSchema = z.object({
   gridKwh: z.number().nonnegative(),
@@ -342,7 +575,7 @@ router.post('/emissions/calculate', (req, res) => {
 });
 
 // ==========================================
-// 5. BILL & LOG INGESTION (GEMINI MULTIMODAL)
+// 4. BILL & LOG INGESTION (GEMINI MULTIMODAL)
 // ==========================================
 router.post('/bills/upload', upload.single('bill'), async (req, res) => {
   try {
@@ -424,7 +657,7 @@ router.post('/bills/manual', (req, res) => {
 });
 
 // ==========================================
-// 6. SEBI BRSR SUSTAINABILITY AUDIT
+// 5. SEBI BRSR SUSTAINABILITY AUDIT
 // ==========================================
 router.post('/audit/generate', async (req, res) => {
   try {
@@ -1416,12 +1649,12 @@ router.all('/audit/html', async (req, res) => {
 });
 
 // ==========================================
-// 7. FACILITY EQUIPMENT & FLEXIBILITY
+// 6. FACILITY EQUIPMENT & FLEXIBILITY
 // ==========================================
-router.get('/facility/equipment', optionalAuth, (req, res) => {
-  const facilityId = req.user?.id || req.query.facilityId || 'default';
-  const kva = Number(req.query.contractLoadKva || req.user?.facility?.loadKva || 500);
-  const facilityName = req.query.facilityName || req.user?.facility?.name || "Hinjewadi Tech Hub";
+router.get('/facility/equipment', (req, res) => {
+  const facilityId = req.query.facilityId || 'default';
+  const kva = Number(req.query.contractLoadKva || 500);
+  const facilityName = req.query.facilityName || "Hinjewadi Tech Hub";
 
   const assets = listEquipment(facilityId, kva, facilityName);
   const summary = calculateCampusFlexCapacity(facilityId, kva);
@@ -1444,9 +1677,9 @@ const equipmentSchema = z.object({
   notes: z.string().optional()
 });
 
-router.post('/facility/equipment', optionalAuth, (req, res) => {
+router.post('/facility/equipment', (req, res) => {
   try {
-    const facilityId = req.user?.id || req.body.facilityId || 'default';
+    const facilityId = req.body.facilityId || 'default';
     const validated = equipmentSchema.parse(req.body);
     const created = addEquipment(validated, facilityId);
     const updatedSummary = calculateCampusFlexCapacity(facilityId);
@@ -1460,9 +1693,9 @@ router.post('/facility/equipment', optionalAuth, (req, res) => {
   }
 });
 
-router.put('/facility/equipment/:id', optionalAuth, (req, res) => {
+router.put('/facility/equipment/:id', (req, res) => {
   try {
-    const facilityId = req.user?.id || req.query.facilityId || 'default';
+    const facilityId = req.query.facilityId || req.body.facilityId || 'default';
     const updated = updateEquipment(req.params.id, req.body, facilityId);
     if (!updated) {
       return res.status(404).json({ error: `Equipment asset ${req.params.id} not found` });
@@ -1478,8 +1711,8 @@ router.put('/facility/equipment/:id', optionalAuth, (req, res) => {
   }
 });
 
-router.delete('/facility/equipment/:id', optionalAuth, (req, res) => {
-  const facilityId = req.user?.id || req.query.facilityId || 'default';
+router.delete('/facility/equipment/:id', (req, res) => {
+  const facilityId = req.query.facilityId || 'default';
   const deleted = deleteEquipment(req.params.id, facilityId);
   if (!deleted) {
     return res.status(404).json({ error: `Equipment asset ${req.params.id} not found` });
@@ -1492,7 +1725,7 @@ router.delete('/facility/equipment/:id', optionalAuth, (req, res) => {
   });
 });
 
-router.post('/facility/equipment/synthesize', optionalAuth, (req, res) => {
+router.post('/facility/equipment/synthesize', (req, res) => {
   try {
     const kva = Number(req.body.contractLoadKva || 500);
     const name = req.body.facilityName || "Commercial Campus";
@@ -1510,7 +1743,7 @@ router.post('/facility/equipment/synthesize', optionalAuth, (req, res) => {
 });
 
 // ==========================================
-// 8. SYSTEM & AI CONFIGURATION STATUS
+// 7. SYSTEM & AI CONFIGURATION STATUS
 // ==========================================
 router.get('/status/ai', (req, res) => {
   const configured = isGeminiConfigured();

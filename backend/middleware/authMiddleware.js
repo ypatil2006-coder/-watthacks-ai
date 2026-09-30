@@ -1,14 +1,16 @@
 import jwt from 'jsonwebtoken';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'watthacks_jwt_secret_dev_2026';
+const JWT_SECRET = process.env.JWT_SECRET || 'watthacks_jwt_secret_pune_sustainability_2026';
 
 /**
- * Authentication Middleware: Verifies JWT Bearer token
+ * Require JWT Authentication Middleware
+ * Enforces valid Bearer token on protected routes
  */
 export function requireAuth(req, res, next) {
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
     return res.status(401).json({
+      success: false,
       error: 'Unauthorized: Missing or invalid Authorization header. Provide a valid Bearer token.'
     });
   }
@@ -20,6 +22,7 @@ export function requireAuth(req, res, next) {
     next();
   } catch (err) {
     return res.status(401).json({
+      success: false,
       error: 'Unauthorized: Invalid or expired session token.',
       details: err.message
     });
@@ -27,7 +30,8 @@ export function requireAuth(req, res, next) {
 }
 
 /**
- * Optional Auth Middleware: Attaches user if token is present, proceeds otherwise
+ * Optional JWT Authentication Middleware
+ * Attaches decoded user if valid Bearer token present; proceeds smoothly otherwise
  */
 export function optionalAuth(req, res, next) {
   const authHeader = req.headers.authorization;
@@ -36,8 +40,10 @@ export function optionalAuth(req, res, next) {
     try {
       req.user = jwt.verify(token, JWT_SECRET);
     } catch {
-      // Proceed as unauthenticated guest/demo
+      // Proceed unauthenticated (demo/guest mode)
     }
   }
   next();
 }
+
+export default { requireAuth, optionalAuth };

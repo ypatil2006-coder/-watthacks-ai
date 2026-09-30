@@ -16,6 +16,17 @@ const client = axios.create({
   }
 });
 
+// Automatically attach JWT Bearer token to all outgoing requests
+client.interceptors.request.use((config) => {
+  try {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('watthacks_jwt') : null;
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+  } catch (e) {}
+  return config;
+});
+
 // Safely resolve Gemini client API key without exposing raw tokens to static secret scanners
 const resolveClientApiKey = () => {
   if (typeof import.meta !== 'undefined' && import.meta.env?.VITE_GEMINI_API_KEY) {
@@ -30,8 +41,8 @@ const resolveClientApiKey = () => {
 
 /**
  * 0. RESOLVE LOCATION FROM GPS / BROWSER GEOLOCATION
- * Maps device latitude and longitude to the nearest Indian Regional Grid, DISCOM,
- * and CEA emission factor.
+ * Maps device latitude and longitude to the nearest Regional Grid, DISCOM,
+ * and CEA / International emission factor.
  * @param {number} lat - Latitude
  * @param {number} lon - Longitude
  */
@@ -40,6 +51,75 @@ export async function resolveLocationFromGps(lat, lon) {
     params: { lat, lon }
   });
   return response.data;
+}
+
+/**
+ * 0b. DETECT CLIENT LOCATION (VPN & Device Aware)
+ * Checks IP network geolocation first (which accurately reads VPN tunnels like Singapore),
+ * and falls back to browser navigator.geolocation.
+ */
+export async function detectClientLocation() {
+  // 1. Try public IP Geolocation (automatically reflects active VPN location like Singapore)
+  try {
+    const res = await fetch('https://ipwho.is/', { signal: AbortSignal.timeout(2500) });
+    if (res.ok) {
+      const data = await res.json();
+      if (data && data.success && data.latitude && data.longitude) {
+        return {
+          latitude: data.latitude,
+          longitude: data.longitude,
+          city: data.city || data.country,
+          country: data.country,
+          countryCode: data.country_code,
+          isVpn: data.country_code !== 'IN',
+          source: 'ip_vpn'
+        };
+      }
+    }
+  } catch (ipErr) {
+    try {
+      const res2 = await fetch('https://ipapi.co/json/', { signal: AbortSignal.timeout(2000) });
+      if (res2.ok) {
+        const data2 = await res2.json();
+        if (data2 && data2.latitude && data2.longitude) {
+          return {
+            latitude: data2.latitude,
+            longitude: data2.longitude,
+            city: data2.city || data2.country_name,
+            country: data2.country_name,
+            countryCode: data2.country_code,
+            isVpn: data2.country_code !== 'IN',
+            source: 'ip_vpn'
+          };
+        }
+      }
+    } catch (e) {}
+  }
+
+  // 2. Fallback to Browser GPS / Wi-Fi Triangulation
+  if (typeof window !== 'undefined' && navigator.geolocation) {
+    try {
+      const pos = await new Promise((resolve, reject) => {
+        navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 4000, enableHighAccuracy: false });
+      });
+      return {
+        latitude: pos.coords.latitude,
+        longitude: pos.coords.longitude,
+        city: 'Local Device Position',
+        isVpn: false,
+        source: 'browser_gps'
+      };
+    } catch (gpsErr) {}
+  }
+
+  // 3. Fallback default
+  return {
+    latitude: 18.5204,
+    longitude: 73.8567,
+    city: 'Pune',
+    isVpn: false,
+    source: 'default'
+  };
 }
 
 /**
@@ -596,6 +676,47 @@ export async function checkSystemHealth() {
   };
 }
 
+/**
+ * 10. AUTHENTICATION & MULTI-TENANCY (MONGODB + JWT)
+ */
+export async function registerUser(userData) {
+  const response = await client.post('/auth/register', userData);
+  if (response.data?.token) {
+    localStorage.setItem('watthacks_jwt', response.data.token);
+  }
+  return response.data;
+}
+
+export async function loginUser(credentials) {
+  const response = await client.post('/auth/login', credentials);
+  if (response.data?.token) {
+    localStorage.setItem('watthacks_jwt', response.data.token);
+  }
+  return response.data;
+}
+
+export async function getCurrentUser() {
+  const response = await client.get('/auth/me');
+  return response.data;
+}
+
+export function logoutUser() {
+  localStorage.removeItem('watthacks_jwt');
+}
+
+/**
+ * 11. AUDIT REPORT PERSISTENCE (MONGODB ATLAS)
+ */
+export async function saveAuditToDb(auditData) {
+  const response = await client.post('/audit/save', auditData);
+  return response.data;
+}
+
+export async function getAuditHistory() {
+  const response = await client.get('/audit/history');
+  return response.data;
+}
+
 export default {
   getLiveTelemetry,
   get24HourCurve,
@@ -606,5 +727,11 @@ export default {
   generateBrsrAudit,
   getFacilityEquipment,
   synthesizeEquipment,
-  checkSystemHealth
+  checkSystemHealth,
+  registerUser,
+  loginUser,
+  getCurrentUser,
+  logoutUser,
+  saveAuditToDb,
+  getAuditHistory
 };

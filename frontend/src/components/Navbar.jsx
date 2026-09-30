@@ -1,6 +1,15 @@
 import React, { useEffect, useRef } from 'react';
+import { LogOut, ShieldCheck } from 'lucide-react';
 
-export default function Navbar({ currentPage = 'landing', onNavigate }) {
+export default function Navbar({
+  currentPage = 'landing',
+  onNavigate,
+  currentUser = null,
+  onOpenAuth,
+  onLogout,
+  detectedLocation = null,
+  onDetectLocation = null
+}) {
   const canvasRef = useRef(null);
 
   useEffect(() => {
@@ -112,14 +121,46 @@ export default function Navbar({ currentPage = 'landing', onNavigate }) {
         <div className="specular-sheen z-[2]"></div>
 
         <div className="relative z-10 flex items-center justify-between w-full">
-          {/* Logo with Apricot Underline Accent */}
-          <button 
-            onClick={() => handleNavClick('landing')}
-            className="text-xl font-medium tracking-tight text-slate-900 relative inline-block group cursor-pointer text-left"
-          >
-            WattHacks
-            <span className="absolute -bottom-1 left-0 w-6 h-[2px] bg-brand-apricot rounded-full transition-all duration-300 group-hover:w-full"></span>
-          </button>
+          {/* Logo with Apricot Underline Accent & GPS Local Grid Indicator */}
+          <div className="flex items-center gap-3">
+            <button 
+              onClick={() => handleNavClick('landing')}
+              className="text-xl font-medium tracking-tight text-slate-900 relative inline-block group cursor-pointer text-left"
+            >
+              WattHacks
+              <span className="absolute -bottom-1 left-0 w-6 h-[2px] bg-brand-apricot rounded-full transition-all duration-300 group-hover:w-full"></span>
+            </button>
+
+            {/* GPS / Network Local Grid Badge */}
+            <button
+              onClick={onDetectLocation}
+              title={
+                detectedLocation
+                  ? (detectedLocation.isInternational || detectedLocation.isVpn)
+                    ? `⚠️ International location detected (${detectedLocation.matchedRegionName}). Select an Indian Regional Hub to proceed.`
+                    : `Calibrated to ${detectedLocation.matchedRegionName} (${detectedLocation.discom})`
+                  : "Click to detect and calibrate with device location"
+              }
+              className={`hidden md:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-[11px] font-mono transition cursor-pointer ${
+                detectedLocation && (detectedLocation.isInternational || detectedLocation.isVpn)
+                  ? 'bg-amber-500/10 hover:bg-amber-500/20 border-amber-500/30 text-amber-900'
+                  : 'bg-slate-900/5 hover:bg-slate-900/10 border-slate-900/10 text-slate-700'
+              }`}
+            >
+              <span className={`w-1.5 h-1.5 rounded-full ${
+                detectedLocation && (detectedLocation.isInternational || detectedLocation.isVpn)
+                  ? 'bg-amber-500'
+                  : 'bg-emerald-500'
+              } animate-pulse`}></span>
+              <span>
+                {detectedLocation 
+                  ? ((detectedLocation.isInternational || detectedLocation.isVpn)
+                      ? `⚠️ ${detectedLocation.matchedRegionName?.split('&')[0]?.split('(')[0]?.trim() || 'Outside India'}`
+                      : `📍 ${detectedLocation.matchedRegionName?.split('&')[0]?.split('(')[0]?.trim()} • ${detectedLocation.discom?.split('(')[0]?.trim() || 'Grid'}`)
+                  : "📍 Detect Local Grid"}
+              </span>
+            </button>
+          </div>
 
           {/* Contextual Page Navigation Links (Current Page Only) */}
           <nav className="hidden lg:flex items-center gap-6 text-xs font-semibold tracking-wide text-slate-700">
@@ -220,8 +261,32 @@ export default function Navbar({ currentPage = 'landing', onNavigate }) {
             )}
           </nav>
 
-          {/* Action Button: Contextual to Current Page */}
-          <div className="flex items-center gap-2 sm:gap-3">
+          {/* Action Area: Auth Portal + Contextual Page Actions */}
+          <div className="flex items-center gap-2 sm:gap-2.5">
+            {/* Facility Director Authentication Portal */}
+            {currentUser ? (
+              <div className="flex items-center gap-1.5 pl-2.5 pr-1.5 py-1 rounded-full bg-slate-900/10 border border-slate-900/15 text-slate-900 text-xs font-semibold shadow-inner">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                <span className="hidden sm:inline max-w-[120px] truncate">{currentUser.name || currentUser.facilityName}</span>
+                <button
+                  onClick={onLogout}
+                  title="Sign Out"
+                  className="p-1 rounded-full hover:bg-slate-900/10 text-slate-500 hover:text-rose-600 transition-colors ml-1 cursor-pointer"
+                >
+                  <LogOut className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={onOpenAuth}
+                className="px-3 py-1.5 rounded-full border border-slate-300/80 bg-white/75 hover:bg-white text-slate-800 hover:text-slate-950 transition-all duration-300 text-xs font-semibold tracking-wide shadow-sm active:scale-95 cursor-pointer flex items-center gap-1.5"
+              >
+                <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+                <span>Sign In</span>
+              </button>
+            )}
+
+            {/* Page Contextual Action Button */}
             {currentPage === 'landing' && (
               <button
                 onClick={() => handleNavClick('bill-audit')}

@@ -70,6 +70,92 @@ export const REGIONAL_PROFILES = {
       zoneC: { hours: "17:00 - 23:00", name: "Evening Peak Surcharge", adjustment: 1.50 },
       zoneD: { hours: "23:00 - 06:00", name: "Night Rebate", adjustment: -0.80 }
     }
+  },
+  hyderabad: {
+    id: "hyderabad",
+    name: "Hyderabad HITEC City",
+    state: "Telangana",
+    discom: "TSSPDCL (Telangana Southern Power)",
+    gridZone: "Southern Grid (IN-SO)",
+    baseTariff: 8.40,
+    ceaBaselineKgPerKwh: 0.690,
+    todTariffs: {
+      zoneA: { hours: "06:00 - 18:00", name: "Day Normal", adjustment: 0.00 },
+      zoneB: { hours: "18:00 - 22:00", name: "Evening Peak Surcharge", adjustment: 1.10 },
+      zoneC: { hours: "22:00 - 06:00", name: "Night Rebate", adjustment: -1.00 }
+    }
+  },
+  chennai: {
+    id: "chennai",
+    name: "Chennai OMR IT Corridor",
+    state: "Tamil Nadu",
+    discom: "TANGEDCO",
+    gridZone: "Southern Grid (IN-SO)",
+    baseTariff: 8.30,
+    ceaBaselineKgPerKwh: 0.690,
+    todTariffs: {
+      zoneA: { hours: "06:00 - 18:00", name: "Day Normal", adjustment: 0.00 },
+      zoneB: { hours: "18:00 - 22:00", name: "Evening Peak Surcharge", adjustment: 1.20 },
+      zoneC: { hours: "22:00 - 06:00", name: "Night Rebate", adjustment: -0.90 }
+    }
+  },
+  ahmedabad: {
+    id: "ahmedabad",
+    name: "Ahmedabad & GIFT City",
+    state: "Gujarat",
+    discom: "Torrent Power / UGVCL",
+    gridZone: "Western Grid (IN-WE)",
+    baseTariff: 8.10,
+    ceaBaselineKgPerKwh: 0.716,
+    todTariffs: {
+      zoneA: { hours: "06:00 - 09:00", name: "Morning Normal", adjustment: 0.00 },
+      zoneB: { hours: "09:00 - 12:00", name: "Morning Peak", adjustment: 0.70 },
+      zoneC: { hours: "12:00 - 18:00", name: "Day Solar Window", adjustment: 0.00 },
+      zoneD: { hours: "18:00 - 22:00", name: "Evening Peak Surcharge", adjustment: 1.35 },
+      zoneE: { hours: "22:00 - 06:00", name: "Night Rebate", adjustment: -1.10 }
+    }
+  },
+  kolkata: {
+    id: "kolkata",
+    name: "Kolkata Salt Lake & New Town",
+    state: "West Bengal",
+    discom: "CESC / WBSEDCL",
+    gridZone: "Eastern Grid (IN-EA)",
+    baseTariff: 8.70,
+    ceaBaselineKgPerKwh: 0.810,
+    todTariffs: {
+      zoneA: { hours: "06:00 - 17:00", name: "Day Normal", adjustment: 0.00 },
+      zoneB: { hours: "17:00 - 23:00", name: "Evening Peak Surcharge", adjustment: 1.40 },
+      zoneC: { hours: "23:00 - 06:00", name: "Night Rebate", adjustment: -1.00 }
+    }
+  },
+  singapore: {
+    id: "singapore",
+    name: "Singapore (SP Group • ASEAN Node)",
+    state: "Singapore",
+    discom: "SP Group (Singapore Power)",
+    gridZone: "Singapore National Grid (SP PowerGrid)",
+    baseTariff: 18.20,
+    ceaBaselineKgPerKwh: 0.408, // Singapore EMA 2024 Grid Emission Factor
+    todTariffs: {
+      zoneA: { hours: "07:00 - 19:00", name: "Peak Day Window", adjustment: 2.10 },
+      zoneB: { hours: "19:00 - 23:00", name: "Evening Shoulder", adjustment: 0.00 },
+      zoneC: { hours: "23:00 - 07:00", name: "Off-Peak Night", adjustment: -1.80 }
+    }
+  },
+  dubai: {
+    id: "dubai",
+    name: "Dubai & UAE (DEWA Hub)",
+    state: "Dubai (UAE / International)",
+    discom: "DEWA (Dubai Electricity & Water)",
+    gridZone: "UAE National Grid",
+    baseTariff: 7.80,
+    ceaBaselineKgPerKwh: 0.490,
+    todTariffs: {
+      zoneA: { hours: "06:00 - 18:00", name: "Day Window", adjustment: 0.00 },
+      zoneB: { hours: "18:00 - 22:00", name: "Evening Peak", adjustment: 1.20 },
+      zoneC: { hours: "22:00 - 06:00", name: "Night Off-Peak", adjustment: -0.90 }
+    }
   }
 };
 
@@ -194,20 +280,28 @@ export const HUB_COORDINATES = [
   { id: 'pune', name: 'Pune & Pimpri-Chinchwad', lat: 18.5204, lon: 73.8567, discom: 'MSEDCL', gridZone: 'Western Grid (IN-WE)' },
   { id: 'mumbai', name: 'Mumbai Metropolitan Region', lat: 19.0760, lon: 72.8777, discom: 'Tata Power / Adani', gridZone: 'Western Grid (IN-WE)' },
   { id: 'bengaluru', name: 'Bengaluru Tech Corridor', lat: 12.9716, lon: 77.5946, discom: 'BESCOM', gridZone: 'Southern Grid (IN-SO)' },
-  { id: 'delhi', name: 'Delhi-NCR', lat: 28.6139, lon: 77.2090, discom: 'BSES Yamuna / BSES Rajdhani', gridZone: 'Northern Grid (IN-NO)' }
+  { id: 'hyderabad', name: 'Hyderabad HITEC City', lat: 17.3850, lon: 78.4867, discom: 'TSSPDCL', gridZone: 'Southern Grid (IN-SO)' },
+  { id: 'chennai', name: 'Chennai OMR IT Corridor', lat: 13.0827, lon: 80.2707, discom: 'TANGEDCO', gridZone: 'Southern Grid (IN-SO)' },
+  { id: 'delhi', name: 'Delhi-NCR & Gurugram', lat: 28.6139, lon: 77.2090, discom: 'BSES / Tata Power', gridZone: 'Northern Grid (IN-NO)' },
+  { id: 'ahmedabad', name: 'Ahmedabad & GIFT City', lat: 23.0225, lon: 72.5714, discom: 'Torrent Power / UGVCL', gridZone: 'Western Grid (IN-WE)' },
+  { id: 'kolkata', name: 'Kolkata & Salt Lake', lat: 22.5726, lon: 88.3639, discom: 'CESC / WBSEDCL', gridZone: 'Eastern Grid (IN-EA)' },
+  { id: 'singapore', name: 'Singapore (SP Group • ASEAN Node)', lat: 1.3521, lon: 103.8198, discom: 'SP Group', gridZone: 'Singapore National Grid (SP PowerGrid)', isInternational: true },
+  { id: 'dubai', name: 'Dubai & UAE (DEWA Hub)', lat: 25.2048, lon: 55.2708, discom: 'DEWA', gridZone: 'UAE National Grid', isInternational: true }
 ];
 
 /**
- * Resolves regional DISCOM, CEA baseline, and grid zone from GPS coordinates
- * (e.g. from browser navigator.geolocation or Google Maps Places API)
+ * Resolves regional DISCOM, CEA baseline, and grid zone from GPS/IP coordinates
+ * (supports both Indian national grid and international VPN gateways like Singapore)
  */
 export function resolveRegionFromCoordinates(lat, lon) {
   let closestHub = HUB_COORDINATES[0];
   let minDistance = Infinity;
+  const numLat = Number(lat);
+  const numLon = Number(lon);
 
   for (const hub of HUB_COORDINATES) {
-    const dLat = (lat - hub.lat);
-    const dLon = (lon - hub.lon);
+    const dLat = (numLat - hub.lat);
+    const dLon = (numLon - hub.lon);
     const distSq = (dLat * dLat) + (dLon * dLon);
     if (distSq < minDistance) {
       minDistance = distSq;
@@ -215,9 +309,11 @@ export function resolveRegionFromCoordinates(lat, lon) {
     }
   }
 
-  const profile = REGIONAL_PROFILES[closestHub.id];
+  const profile = REGIONAL_PROFILES[closestHub.id] || REGIONAL_PROFILES.pune;
+  const isVpnDetected = !!closestHub.isInternational || numLat < 6.0 || numLat > 37.5 || numLon < 68.0 || numLon > 97.5;
+
   return {
-    detectedCoordinates: { latitude: Number(lat), longitude: Number(lon) },
+    detectedCoordinates: { latitude: numLat, longitude: numLon },
     matchedRegionId: closestHub.id,
     matchedRegionName: profile.name,
     state: profile.state,
@@ -225,6 +321,8 @@ export function resolveRegionFromCoordinates(lat, lon) {
     gridZone: profile.gridZone,
     ceaBaselineKgPerKwh: profile.ceaBaselineKgPerKwh,
     baseTariffInr: profile.baseTariff,
+    isInternational: !!closestHub.isInternational,
+    isVpnDetected,
     profile
   };
 }

@@ -11,6 +11,8 @@ import ProductDashboard from './components/ProductDashboard';
 import CustomCursor from './components/CustomCursor';
 import Footer from './components/Footer';
 import StripTransition from './components/StripTransition';
+import AuthModal from './components/AuthModal';
+import { getCurrentUser, logoutUser, resolveLocationFromGps, detectClientLocation } from './services/api';
 import { ArrowRight, FileCheck, Zap, ShieldCheck } from 'lucide-react';
 
 const VALID_PAGES = ['landing', 'bill-audit', 'audit-report', 'live-console'];
@@ -78,6 +80,73 @@ export default function App() {
   // Data state with persistent storage fallback
   const [extractedData, setExtractedData] = useState(getInitialExtractedData);
   const [auditData, setAuditData] = useState(getInitialAuditData);
+
+  // 🔐 Authentication & Protected Product Gateway State
+  const [currentUser, setCurrentUser] = useState(null);
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [pendingTargetPage, setPendingTargetPage] = useState(null);
+
+  // 📍 Live GPS Regional Grid Calibration
+  const [detectedLocation, setDetectedLocation] = useState(() => {
+    try {
+      const saved = sessionStorage.getItem('watthacks_detected_location');
+      return saved ? JSON.parse(saved) : null;
+    } catch (e) {
+      return null;
+    }
+  });
+
+  const requestGpsLocation = async () => {
+    try {
+      const clientLoc = await detectClientLocation();
+      const res = await resolveLocationFromGps(clientLoc.latitude, clientLoc.longitude);
+      if (res?.success) {
+        const isForeign = !!clientLoc.isVpn || clientLoc.countryCode !== 'IN' || res.isInternational || clientLoc.latitude < 6.0 || clientLoc.latitude > 37.5 || clientLoc.longitude < 68.0 || clientLoc.longitude > 97.5;
+        const fullLocation = {
+          ...res,
+          matchedRegionName: isForeign ? (clientLoc.city || clientLoc.country || res.matchedRegionName) : res.matchedRegionName,
+          isInternational: isForeign,
+          isVpn: clientLoc.isVpn,
+          source: clientLoc.source
+        };
+        setDetectedLocation(fullLocation);
+        sessionStorage.setItem('watthacks_detected_location', JSON.stringify(fullLocation));
+      }
+    } catch (e) {
+      console.warn('Location resolution notice in App:', e.message);
+    }
+  };
+
+  // Proactively request browser location on first load
+  useEffect(() => {
+    requestGpsLocation();
+  }, []);
+
+  // Validate JWT session on initial load and guard product routes
+  useEffect(() => {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('watthacks_jwt') : null;
+    if (token) {
+      getCurrentUser()
+        .then((res) => {
+          if (res?.success && res.user) {
+            setCurrentUser(res.user);
+          }
+        })
+        .catch(() => {
+          localStorage.removeItem('watthacks_jwt');
+          setCurrentUser(null);
+          if (currentPage !== 'landing') {
+            setCurrentPage('landing');
+            setShowAuthModal(true);
+          }
+        });
+    } else if (currentPage !== 'landing') {
+      // Unauthenticated deep link to product page -> gate access and prompt auth
+      setPendingTargetPage(currentPage);
+      setCurrentPage('landing');
+      setShowAuthModal(true);
+    }
+  }, []);
 
   // Synchronized vertical strips transition state (Active on Entrance, Refresh & Landing <-> Other Pages)
   const [transitionState, setTransitionState] = useState({
@@ -253,7 +322,36 @@ export default function App() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  // 🔐 Authentication Handlers
+  const handleAuthSuccess = (user) => {
+    setCurrentUser(user);
+    setShowAuthModal(false);
+    const target = pendingTargetPage || 'bill-audit';
+    setPendingTargetPage(null);
+    executeNavigation(target);
+  };
+
+  const handleLogout = () => {
+    logoutUser();
+    setCurrentUser(null);
+    executeNavigation('landing');
+  };
+
   const handleNavigate = (page, sectionId = null) => {
+    // 🔐 AUTHENTICATION GATE: Check if transitioning into the product pages
+    const isProductPage = page !== 'landing';
+    const token = typeof window !== 'undefined' ? localStorage.getItem('watthacks_jwt') : null;
+
+    if (isProductPage && !token) {
+      setPendingTargetPage(page);
+      setShowAuthModal(true);
+      return;
+    }
+
+    executeNavigation(page, sectionId);
+  };
+
+  const executeNavigation = (page, sectionId = null) => {
     // If target is same page and no section anchor, smooth scroll to top
     if (page === currentPage && !sectionId) {
       window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -363,7 +461,15 @@ export default function App() {
       <WaveBackground />
 
       {/* Sticky Liquid Glass Navbar with All Page Tabs */}
-      <Navbar currentPage={currentPage} onNavigate={handleNavigate} />
+      <Navbar
+        currentPage={currentPage}
+        onNavigate={handleNavigate}
+        currentUser={currentUser}
+        onOpenAuth={() => setShowAuthModal(true)}
+        onLogout={handleLogout}
+        detectedLocation={detectedLocation}
+        onDetectLocation={requestGpsLocation}
+      />
 
       {/* ======================================================== */}
       {/* PAGE 1: HOME & LANDING PAGE                              */}
@@ -427,6 +533,7 @@ export default function App() {
               ref={formRef} 
               extractedData={extractedData} 
               onSubmitAudit={handleSubmitAudit} 
+              detectedLocation={detectedLocation}
             />
           </div>
         </main>
@@ -453,6 +560,25 @@ export default function App() {
           <ProductDashboard onBack={() => handleNavigate('landing')} />
         </main>
       )}
+
+      {/* 🔐 Authentication & JWT Gateway Modal */}
+      <AuthModal
+        isOpen={showAuthModal}
+        onClose={() => {
+          setShowAuthModal(false);
+          setPendingTargetPage(null);
+        }}
+        onAuthSuccess={handleAuthSuccess}
+        destinationName={
+          pendingTargetPage === 'bill-audit'
+            ? 'Bill Upload & Multimodal OCR Ingestion'
+            : pendingTargetPage === 'audit-report'
+            ? 'SEBI BRSR Compliance & Tariff Audit Report'
+            : pendingTargetPage === 'live-console'
+            ? 'Autonomous Grid Intelligence Console'
+            : 'WattHacks Autonomous Energy Workspace'
+        }
+      />
 
       {/* Enterprise Compliance & Specs Footer */}
       <Footer />
