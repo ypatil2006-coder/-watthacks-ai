@@ -35,12 +35,18 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, destinationN
     setError(null);
     try {
       const res = await loginUser({ email: 'demo@watthacks.ai', password: 'demo_password_123' });
-      if (res.success) {
+      if (res?.success) {
         setSuccessMsg("⚡ JWT issued! Unlocking product workspace...");
+        const safeUser = res.user || {
+          id: 'demo-evaluator-id',
+          name: 'Facility Director (Pune)',
+          email: 'demo@watthacks.ai',
+          facilityName: 'Hinjewadi Tech Hub - Tower B'
+        };
         setTimeout(() => {
-          if (onAuthSuccess) onAuthSuccess(res.user);
+          if (onAuthSuccess) onAuthSuccess(safeUser);
           onClose();
-        }, 600);
+        }, 300);
       }
     } catch (err) {
       setError(formatAuthError(err));
@@ -68,12 +74,18 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, destinationN
         });
       }
 
-      if (res.success) {
+      if (res?.success) {
         setSuccessMsg(tab === 'login' ? '⚡ JWT issued! Unlocking product...' : '⚡ Registered & JWT issued! Unlocking product...');
+        const safeUser = res.user || {
+          id: `usr-${Date.now()}`,
+          name: name || email.split('@')[0] || 'Facility Director',
+          email: email,
+          facilityName: 'Hinjewadi Tech Hub - Tower B'
+        };
         setTimeout(() => {
-          if (onAuthSuccess) onAuthSuccess(res.user);
+          if (onAuthSuccess) onAuthSuccess(safeUser);
           onClose();
-        }, 700);
+        }, 350);
       }
     } catch (err) {
       setError(formatAuthError(err));

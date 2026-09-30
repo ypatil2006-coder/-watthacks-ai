@@ -267,7 +267,15 @@ export default function Navbar({
             {currentUser ? (
               <div className="flex items-center gap-1.5 pl-2.5 pr-1.5 py-1 rounded-full bg-slate-900/10 border border-slate-900/15 text-slate-900 text-xs font-semibold shadow-inner">
                 <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                <span className="hidden sm:inline max-w-[120px] truncate">{currentUser.name || currentUser.facilityName}</span>
+                <span className="hidden sm:inline max-w-[120px] truncate">
+                  {typeof currentUser?.name === 'string'
+                    ? currentUser.name
+                    : typeof currentUser?.facilityName === 'string'
+                    ? currentUser.facilityName
+                    : typeof currentUser?.email === 'string'
+                    ? currentUser.email
+                    : 'Director'}
+                </span>
                 <button
                   onClick={onLogout}
                   title="Sign Out"

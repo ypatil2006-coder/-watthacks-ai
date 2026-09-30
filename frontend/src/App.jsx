@@ -148,48 +148,19 @@ export default function App() {
     }
   }, []);
 
-  // Synchronized vertical strips transition state (Active on Entrance, Refresh & Landing <-> Other Pages)
+  // Synchronized vertical strips transition state (Active during Landing <-> Other Pages navigation)
   const [transitionState, setTransitionState] = useState({
-    active: true,
-    phase: 'cover', // 'cover' | 'reveal' | 'idle'
-    direction: 'down' // 'down' (landing -> other / entrance) | 'up' (other -> landing)
+    active: false,
+    phase: 'idle', // 'cover' | 'reveal' | 'idle'
+    direction: 'down' // 'down' (landing -> other) | 'up' (other -> landing)
   });
-  const isTransitioningRef = useRef(true);
+  const isTransitioningRef = useRef(false);
   const transitionTimersRef = useRef([]);
 
   const clearTransitionTimers = () => {
     transitionTimersRef.current.forEach(t => clearTimeout(t));
     transitionTimersRef.current = [];
   };
-
-  // Entrance & Refresh Transition: runs on initial mount and page reload
-  useEffect(() => {
-    // Phase 1 (cover) plays immediately from mount.
-    // At 700ms, all 15 strips have covered the screen. Switch to 'reveal'.
-    const t1 = setTimeout(() => {
-      setTransitionState({
-        active: true,
-        phase: 'reveal',
-        direction: 'down'
-      });
-
-      // At 700ms + 700ms = 1400ms, all 15 strips have cascaded out. Finish.
-      const t2 = setTimeout(() => {
-        setTransitionState({
-          active: false,
-          phase: 'idle',
-          direction: 'down'
-        });
-        isTransitioningRef.current = false;
-      }, 700);
-
-      transitionTimersRef.current.push(t2);
-    }, 700);
-
-    transitionTimersRef.current.push(t1);
-
-    return () => clearTransitionTimers();
-  }, []);
 
   const formRef = useRef(null);
 
@@ -324,6 +295,13 @@ export default function App() {
 
   // 🔐 Authentication Handlers
   const handleAuthSuccess = (user) => {
+    isTransitioningRef.current = false;
+    clearTransitionTimers();
+    setTransitionState({
+      active: false,
+      phase: 'idle',
+      direction: 'down'
+    });
     setCurrentUser(user);
     setShowAuthModal(false);
     const target = pendingTargetPage || 'bill-audit';
@@ -332,6 +310,13 @@ export default function App() {
   };
 
   const handleLogout = () => {
+    isTransitioningRef.current = false;
+    clearTransitionTimers();
+    setTransitionState({
+      active: false,
+      phase: 'idle',
+      direction: 'down'
+    });
     logoutUser();
     setCurrentUser(null);
     executeNavigation('landing');
@@ -440,6 +425,17 @@ export default function App() {
     }, 700);
 
     transitionTimersRef.current.push(t1);
+
+    // Safety failsafe timer: ensures transition lock and overlay are reset even if backgrounded
+    const failsafe = setTimeout(() => {
+      setTransitionState({
+        active: false,
+        phase: 'idle',
+        direction: 'down'
+      });
+      isTransitioningRef.current = false;
+    }, 1500);
+    transitionTimersRef.current.push(failsafe);
   };
 
   return (
