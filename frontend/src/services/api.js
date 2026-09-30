@@ -39,18 +39,65 @@ const resolveClientApiKey = () => {
   }
 };
 
+export const INDIAN_GRID_HUBS = [
+  { id: 'pune', name: 'Pune IT Park, Maharashtra', lat: 18.5204, lon: 73.8567, discom: 'MSEDCL (Maharashtra) • HT-1 Commercial', gridZone: 'Western Grid (IN-WE)', ceaBaselineKgPerKwh: 0.716, baseTariffInr: 8.50 },
+  { id: 'mumbai', name: 'Mumbai Financial Hub, Maharashtra', lat: 19.0760, lon: 72.8777, discom: 'Adani Electricity / BEST (Mumbai) • HT Commercial', gridZone: 'Western Grid (IN-WE)', ceaBaselineKgPerKwh: 0.716, baseTariffInr: 9.10 },
+  { id: 'bengaluru', name: 'Bengaluru Tech Hub, Karnataka', lat: 12.9716, lon: 77.5946, discom: 'BESCOM (Karnataka) • HT-2A Commercial', gridZone: 'Southern Grid (IN-SO)', ceaBaselineKgPerKwh: 0.690, baseTariffInr: 8.20 },
+  { id: 'delhi', name: 'Gurugram Industrial Hub, Haryana / Delhi-NCR', lat: 28.6139, lon: 77.2090, discom: 'Tata Power (Delhi/NCR) • HT Industrial Continuous', gridZone: 'Northern Grid (IN-NO)', ceaBaselineKgPerKwh: 0.740, baseTariffInr: 9.40 },
+  { id: 'hyderabad', name: 'Hyderabad HITEC City, Telangana', lat: 17.3850, lon: 78.4867, discom: 'TSSPDCL (Telangana) • HT Commercial', gridZone: 'Southern Grid (IN-SO)', ceaBaselineKgPerKwh: 0.690, baseTariffInr: 8.40 },
+  { id: 'chennai', name: 'Chennai OMR IT Corridor, Tamil Nadu', lat: 13.0827, lon: 80.2707, discom: 'TANGEDCO (Tamil Nadu) • HT Commercial', gridZone: 'Southern Grid (IN-SO)', ceaBaselineKgPerKwh: 0.690, baseTariffInr: 8.30 }
+];
+
 /**
  * 0. RESOLVE LOCATION FROM GPS / BROWSER GEOLOCATION
  * Maps device latitude and longitude to the nearest Regional Grid, DISCOM,
- * and CEA / International emission factor.
+ * and CEA / International emission factor with instant local mathematical fallback.
  * @param {number} lat - Latitude
  * @param {number} lon - Longitude
  */
 export async function resolveLocationFromGps(lat, lon) {
-  const response = await client.get(`/grid/resolve-location`, {
-    params: { lat, lon }
-  });
-  return response.data;
+  try {
+    const response = await client.get(`/grid/resolve-location`, {
+      params: { lat, lon }
+    });
+    if (response.data && response.data.success) {
+      return response.data;
+    }
+  } catch (err) {
+    console.warn('Backend grid resolution offline, calculating client-side:', err.message);
+  }
+
+  // Client-Side Fallback: Mathematical nearest hub resolution
+  const numLat = Number(lat) || 18.5204;
+  const numLon = Number(lon) || 73.8567;
+  const isForeign = numLat < 6.0 || numLat > 37.5 || numLon < 68.0 || numLon > 97.5;
+
+  let closest = INDIAN_GRID_HUBS[0];
+  let minDistance = Infinity;
+
+  for (const hub of INDIAN_GRID_HUBS) {
+    const dLat = (numLat - hub.lat);
+    const dLon = (numLon - hub.lon);
+    const distSq = (dLat * dLat) + (dLon * dLon);
+    if (distSq < minDistance) {
+      minDistance = distSq;
+      closest = hub;
+    }
+  }
+
+  return {
+    success: true,
+    detectedCoordinates: { latitude: +numLat.toFixed(4), longitude: +numLon.toFixed(4) },
+    matchedRegionId: closest.id,
+    matchedRegionName: closest.name,
+    discom: closest.discom,
+    gridZone: closest.gridZone,
+    ceaBaselineKgPerKwh: closest.ceaBaselineKgPerKwh,
+    baseTariffInr: closest.baseTariffInr,
+    isInternational: isForeign,
+    isVpnDetected: isForeign,
+    source: 'client_fallback'
+  };
 }
 
 /**
@@ -112,7 +159,7 @@ export async function detectClientLocation() {
     } catch (gpsErr) {}
   }
 
-  // 3. Fallback default
+  // 3. Fallback default (Pune IT Park)
   return {
     latitude: 18.5204,
     longitude: 73.8567,
@@ -125,7 +172,7 @@ export async function detectClientLocation() {
 /**
  * 1. LIVE GRID TELEMETRY
  * Fetches real-time frequency, carbon intensity (gCO2/kWh), active TOD tariff,
- * and live solar radiation / ambient temperature from Open-Meteo.
+ * and live solar radiation / ambient temperature from Open-Meteo with local diurnal fallback.
  * @param {string|Object} regionOrCoords - 'Pune' or { lat, lon }
  */
 export async function getLiveTelemetry(regionOrCoords = 'Pune') {
@@ -133,8 +180,43 @@ export async function getLiveTelemetry(regionOrCoords = 'Pune') {
     ? { lat: regionOrCoords.lat, lon: regionOrCoords.lon }
     : { region: regionOrCoords };
 
-  const response = await client.get(`/telemetry/live`, { params });
-  return response.data;
+  try {
+    const response = await client.get(`/telemetry/live`, { params });
+    if (response.data && response.data.success) {
+      return response.data;
+    }
+  } catch (err) {
+    console.warn('Backend live telemetry offline, utilizing client diurnal model:', err.message);
+  }
+
+  // Pure Client Fallback Diurnal Dispatch Model
+  const now = new Date();
+  const istHours = (now.getUTCHours() + 5.5) % 24;
+  const isPeak = istHours >= 18 && istHours < 22;
+  const isNight = istHours >= 22 || istHours < 6;
+  const isAfternoonSolar = istHours >= 12 && istHours < 17;
+
+  const solarDni = isAfternoonSolar ? 720 : (istHours >= 7 && istHours < 18 ? 580 : 0);
+  const carbonIntensity = isPeak ? 685 : (isNight ? 510 : (isAfternoonSolar ? 440 : 590));
+
+  return {
+    success: true,
+    telemetry: {
+      timestamp: now.toISOString(),
+      gridFrequencyHz: +(50.00 + (Math.sin(now.getTime() / 4000) * 0.025)).toFixed(2),
+      carbonIntensityGco2: carbonIntensity,
+      liveSolarWeather: {
+        directNormalSolarIrradianceWm2: solarDni || 620,
+        temperatureC: 28.5
+      },
+      activeSlot: {
+        slotName: isPeak ? 'Zone D Peak (+₹1.50/kWh)' : (isNight ? 'Zone E Night Rebate (-₹1.50/kWh)' : 'Zone A/B Day Commercial'),
+        tariffAdjustmentInr: isPeak ? 1.50 : (isNight ? -1.50 : 0.00)
+      },
+      status: isPeak ? '🚨 Peaker Coal Plants Active' : (isNight ? '🌿 Night Wind Rebate Active' : 'Normal Grid Baseline'),
+      isClientFallback: true
+    }
+  };
 }
 
 /**

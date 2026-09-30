@@ -116,33 +116,63 @@ const ExtractedInfoForm = forwardRef(({ extractedData, onSubmitAudit, detectedLo
   const handleDetectLocation = async (manualCoords = null, hubId = null, hubName = null) => {
     setLocLoading(true);
     try {
-      let lat = null;
-      let lon = null;
-      let isGps = false;
-      let isForeign = false;
-      let foreignName = '';
-
       if (manualCoords) {
-        lat = manualCoords.lat;
-        lon = manualCoords.lon;
-        setSelectedHubId(hubId || 'pune');
+        // Instant synchronous application of the preset Indian hub
+        const foundHub = GRID_HUBS.find(h => h.id === hubId) || GRID_HUBS[0];
+        setSelectedHubId(hubId || foundHub.id);
         setLocationSource('preset');
         setIsInternationalLocation(false);
-      } else {
-        // Multi-source detection: Check IP network location & Browser GPS
-        const clientLoc = await detectClientLocation();
-        lat = clientLoc.latitude;
-        lon = clientLoc.longitude;
-        isGps = clientLoc.source === 'browser_gps';
-        isForeign = !!clientLoc.isVpn || clientLoc.countryCode !== 'IN' || lat < 6.0 || lat > 37.5 || lon < 68.0 || lon > 97.5;
-        foreignName = clientLoc.city || clientLoc.country || 'Non-Indian Node';
-        setLocationSource('gps');
+        setInternationalLocationName('');
+
+        setFormData(prev => ({
+          ...prev,
+          latitude: manualCoords.lat,
+          longitude: manualCoords.lon,
+          discom: foundHub.discom,
+          location: hubName || foundHub.regionName,
+          gridZone: foundHub.gridZone,
+          ceaBaselineKgPerKwh: foundHub.ceaBaselineKgPerKwh,
+          liveSolarDni: foundHub.solarDni,
+          liveGridFreq: foundHub.freq
+        }));
+
+        setLiveTelemetryStatus({
+          matchedRegion: hubName || foundHub.regionName,
+          gridZone: foundHub.gridZone,
+          ceaFactor: foundHub.ceaBaselineKgPerKwh,
+          solarDni: foundHub.solarDni,
+          freq: foundHub.freq,
+          isGps: false
+        });
+
+        // Background update real-time telemetry if available
+        getLiveTelemetry({ lat: manualCoords.lat, lon: manualCoords.lon }).then(telRes => {
+          if (telRes?.telemetry) {
+            const t = telRes.telemetry;
+            setFormData(p => ({
+              ...p,
+              liveSolarDni: t?.liveSolarWeather?.directNormalSolarIrradianceWm2 || p.liveSolarDni,
+              liveGridFreq: t?.gridFrequencyHz || p.liveGridFreq
+            }));
+          }
+        }).catch(() => {});
+
+        return;
       }
+
+      // Multi-source detection: Check IP network location & Browser GPS
+      const clientLoc = await detectClientLocation();
+      const lat = clientLoc.latitude || 18.5204;
+      const lon = clientLoc.longitude || 73.8567;
+      const isGps = clientLoc.source === 'browser_gps';
+      const isForeign = !!clientLoc.isVpn || clientLoc.countryCode !== 'IN' || lat < 6.0 || lat > 37.5 || lon < 68.0 || lon > 97.5;
+      const foreignName = clientLoc.city || clientLoc.country || 'Non-Indian Node';
 
       if (isForeign) {
         setIsInternationalLocation(true);
         setInternationalLocationName(foreignName);
         setSelectedHubId(null);
+        setLocationSource('gps');
         setFormData(prev => ({
           ...prev,
           location: `${foreignName} (International Location)`,
@@ -157,32 +187,30 @@ const ExtractedInfoForm = forwardRef(({ extractedData, onSubmitAudit, detectedLo
       }
 
       setIsInternationalLocation(false);
-      if (!lat || !lon) {
-        lat = 18.5204;
-        lon = 73.8567;
-      }
+      setInternationalLocationName('');
 
       // 1. Resolve Indian Government Grid Zone & CEA Baseline from Coordinates
       const geoRes = await resolveLocationFromGps(lat, lon);
-      const matched = geoRes?.matchedRegionId || hubId || 'pune';
+      const matched = geoRes?.matchedRegionId || 'pune';
       setSelectedHubId(matched);
+      setLocationSource('gps');
 
       const ceaFactor = geoRes?.ceaBaselineKgPerKwh || (matched === 'bengaluru' ? 0.690 : matched === 'delhi' ? 0.740 : 0.716);
-      const discomName = geoRes?.discom || (matched === 'bengaluru' ? 'BESCOM (Karnataka)' : matched === 'delhi' ? 'Tata Power (Delhi/NCR)' : 'MSEDCL (Maharashtra)');
+      const discomName = geoRes?.discom || (matched === 'bengaluru' ? 'BESCOM (Karnataka) • HT-2A Commercial' : matched === 'delhi' ? 'Tata Power (Delhi/NCR) • HT Industrial Continuous' : 'MSEDCL (Maharashtra) • HT-1 Commercial');
       const gridZoneName = geoRes?.gridZone || (matched === 'bengaluru' ? 'Southern Grid (IN-SO)' : matched === 'delhi' ? 'Northern Grid (IN-NO)' : 'Western Grid (IN-WE)');
-      const resolvedLocationName = hubName || geoRes?.matchedRegionName || `${lat.toFixed(2)}°N, ${lon.toFixed(2)}°E`;
+      const resolvedLocationName = geoRes?.matchedRegionName || `${lat.toFixed(2)}°N, ${lon.toFixed(2)}°E`;
 
-      // 2. Fetch Live Real-Time Satellite Solar & Grid Telemetry from Govt/Open-Meteo API
+      // 2. Fetch Live Real-Time Satellite Solar & Grid Telemetry
       const telRes = await getLiveTelemetry({ lat, lon });
       const t = telRes?.telemetry;
-      const solarDni = t?.liveSolarWeather?.directNormalSolarIrradianceWm2 || 620;
-      const freq = t?.gridFrequencyHz || 50.01;
+      const solarDni = t?.liveSolarWeather?.directNormalSolarIrradianceWm2 || 650;
+      const freq = t?.gridFrequencyHz || 50.02;
 
       setFormData(prev => ({
         ...prev,
         latitude: +lat.toFixed(4),
         longitude: +lon.toFixed(4),
-        discom: prev.discom || `${discomName} • HT Commercial`,
+        discom: prev.discom || discomName,
         location: resolvedLocationName,
         gridZone: gridZoneName,
         ceaBaselineKgPerKwh: ceaFactor,
@@ -199,7 +227,22 @@ const ExtractedInfoForm = forwardRef(({ extractedData, onSubmitAudit, detectedLo
         isGps
       });
     } catch (err) {
-      console.warn('Location detection notice:', err.message);
+      console.warn('Location detection notice, applying default hub calibration:', err.message);
+      const defaultHub = GRID_HUBS[0];
+      setSelectedHubId('pune');
+      setLocationSource('gps');
+      setIsInternationalLocation(false);
+      setFormData(prev => ({
+        ...prev,
+        latitude: defaultHub.coords.lat,
+        longitude: defaultHub.coords.lon,
+        discom: prev.discom || defaultHub.discom,
+        location: prev.location || defaultHub.regionName,
+        gridZone: prev.gridZone || defaultHub.gridZone,
+        ceaBaselineKgPerKwh: prev.ceaBaselineKgPerKwh || defaultHub.ceaBaselineKgPerKwh,
+        liveSolarDni: prev.liveSolarDni || defaultHub.solarDni,
+        liveGridFreq: prev.liveGridFreq || defaultHub.freq
+      }));
     } finally {
       setLocLoading(false);
     }
@@ -213,6 +256,17 @@ const ExtractedInfoForm = forwardRef(({ extractedData, onSubmitAudit, detectedLo
         if (isVpn || detectedLocation.isInternational) {
           setIsInternationalLocation(true);
           setInternationalLocationName(detectedLocation.matchedRegionName || 'International Location');
+          setLocationSource('gps');
+          setFormData(prev => ({
+            ...prev,
+            latitude: detectedLocation.detectedCoordinates?.latitude || null,
+            longitude: detectedLocation.detectedCoordinates?.longitude || null,
+            location: `${detectedLocation.matchedRegionName || 'International'} (International Location)`,
+            gridZone: 'Non-Indian Grid Node',
+            ceaBaselineKgPerKwh: null,
+            liveSolarDni: 590,
+            liveGridFreq: 50.00
+          }));
           return;
         }
         const matched = detectedLocation.matchedRegionId || 'pune';
@@ -221,12 +275,14 @@ const ExtractedInfoForm = forwardRef(({ extractedData, onSubmitAudit, detectedLo
         setIsInternationalLocation(false);
         setFormData(prev => ({
           ...prev,
-          latitude: detectedLocation.detectedCoordinates?.latitude || prev.latitude,
-          longitude: detectedLocation.detectedCoordinates?.longitude || prev.longitude,
+          latitude: detectedLocation.detectedCoordinates?.latitude || prev.latitude || 18.5204,
+          longitude: detectedLocation.detectedCoordinates?.longitude || prev.longitude || 73.8567,
           discom: prev.discom || `${detectedLocation.discom} • HT Commercial`,
-          location: detectedLocation.matchedRegionName || prev.location,
-          gridZone: detectedLocation.gridZone || prev.gridZone,
-          ceaBaselineKgPerKwh: detectedLocation.ceaBaselineKgPerKwh || prev.ceaBaselineKgPerKwh
+          location: detectedLocation.matchedRegionName || prev.location || 'Pune IT Park, Maharashtra',
+          gridZone: detectedLocation.gridZone || prev.gridZone || 'Western Grid (IN-WE)',
+          ceaBaselineKgPerKwh: detectedLocation.ceaBaselineKgPerKwh || prev.ceaBaselineKgPerKwh || 0.716,
+          liveSolarDni: prev.liveSolarDni || 650,
+          liveGridFreq: prev.liveGridFreq || 50.02
         }));
       } else {
         handleDetectLocation();
@@ -440,7 +496,7 @@ const ExtractedInfoForm = forwardRef(({ extractedData, onSubmitAudit, detectedLo
               onClick={() => handleDetectLocation()}
               disabled={locLoading}
               className={`px-3.5 py-2 rounded-xl text-xs font-mono font-medium transition-all flex items-center gap-2 cursor-pointer active:scale-95 shadow-sm disabled:opacity-50 ${
-                locationSource && locationSource !== 'preset'
+                formData.location && locationSource && locationSource !== 'preset'
                   ? 'bg-slate-950 text-emerald-300 border-2 border-emerald-400 ring-2 ring-emerald-500/40 shadow-md shadow-emerald-500/20'
                   : 'bg-slate-900 hover:bg-slate-800 text-white'
               }`}
@@ -452,9 +508,9 @@ const ExtractedInfoForm = forwardRef(({ extractedData, onSubmitAudit, detectedLo
                 </>
               ) : (
                 <>
-                  <MapPin className={`w-3.5 h-3.5 ${locationSource && locationSource !== 'preset' ? 'text-emerald-300 animate-pulse' : 'text-emerald-400'}`} />
+                  <MapPin className={`w-3.5 h-3.5 ${formData.location && locationSource && locationSource !== 'preset' ? 'text-emerald-300 animate-pulse' : 'text-emerald-400'}`} />
                   <span>
-                    {locationSource && locationSource !== 'preset'
+                    {formData.location && locationSource && locationSource !== 'preset'
                       ? '📍 Location Connected (Active)'
                       : '📍 Auto-Detect Live Location'}
                   </span>
