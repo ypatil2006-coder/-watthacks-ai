@@ -437,8 +437,6 @@ export default function App() {
         currentUser={currentUser}
         onOpenAuth={() => setShowAuthModal(true)}
         onLogout={handleLogout}
-        hasActiveBill={!!extractedData}
-        onResetBill={handleResetBillData}
       />
 
       {/* ======================================================== */}

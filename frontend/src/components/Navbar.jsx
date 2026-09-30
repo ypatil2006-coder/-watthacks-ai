@@ -6,9 +6,7 @@ export default function Navbar({
   onNavigate,
   currentUser = null,
   onOpenAuth,
-  onLogout,
-  hasActiveBill = false,
-  onResetBill = null
+  onLogout
 }) {
   const canvasRef = useRef(null);
 
@@ -121,8 +119,8 @@ export default function Navbar({
         <div className="specular-sheen z-[2]"></div>
 
         <div className="relative z-10 flex items-center justify-between w-full">
-          {/* Logo with Apricot Underline Accent & GPS Local Grid Indicator */}
-          <div className="flex items-center gap-3">
+          {/* Logo with Apricot Underline Accent */}
+          <div className="flex items-center">
             <button 
               onClick={() => handleNavClick('landing')}
               className="text-xl font-medium tracking-tight text-slate-900 relative inline-block group cursor-pointer text-left"
@@ -130,21 +128,6 @@ export default function Navbar({
               WattHacks
               <span className="absolute -bottom-1 left-0 w-6 h-[2px] bg-brand-apricot rounded-full transition-all duration-300 group-hover:w-full"></span>
             </button>
-
-            {/* Active Audit State Indicator & Quick Reset */}
-            {hasActiveBill && onResetBill && (
-              <button
-                onClick={() => {
-                  onResetBill();
-                  if (onNavigate) onNavigate('bill-audit');
-                }}
-                className="hidden md:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-slate-900/10 hover:border-rose-400 bg-slate-900/5 hover:bg-rose-50 text-slate-700 hover:text-rose-700 text-[11px] font-mono transition cursor-pointer"
-                title="Clear current bill data to upload or review a new facility"
-              >
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                <span>Audit Active • New Ingestion</span>
-              </button>
-            )}
           </div>
 
           {/* Contextual Page Navigation Links (Current Page Only) */}
