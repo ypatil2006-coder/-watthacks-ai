@@ -237,12 +237,17 @@ const ExtractedInfoForm = forwardRef(({ extractedData, onSubmitAudit, detectedLo
   // Sync when extractedData changes
   useEffect(() => {
     if (!extractedData) return;
-    const isBescom = extractedData.discom?.includes('BESCOM') || extractedData.name?.includes('BESCOM') || extractedData.location?.includes('Bengaluru') || extractedData.facilityName?.includes('Bengaluru');
-    const isTata = extractedData.discom?.includes('Tata Power') || extractedData.name?.includes('Tata') || extractedData.location?.includes('Gurugram') || extractedData.location?.includes('Delhi') || extractedData.facilityName?.includes('Gurugram');
+    const discomStr = typeof extractedData.discom === 'string' ? extractedData.discom : '';
+    const nameStr = typeof extractedData.name === 'string' ? extractedData.name : '';
+    const locStr = typeof extractedData.location === 'string' ? extractedData.location : '';
+    const facStr = typeof extractedData.facilityName === 'string' ? extractedData.facilityName : '';
+
+    const isBescom = discomStr.includes('BESCOM') || nameStr.includes('BESCOM') || locStr.includes('Bengaluru') || facStr.includes('Bengaluru');
+    const isTata = discomStr.includes('Tata Power') || nameStr.includes('Tata') || locStr.includes('Gurugram') || locStr.includes('Delhi') || facStr.includes('Gurugram');
     
     const defaultCea = extractedData.ceaBaselineKgPerKwh || extractedData.ceaBaseline || (isBescom ? 0.690 : isTata ? 0.740 : 0.716);
     const defaultZone = extractedData.gridZone || (isBescom ? 'Southern Grid (IN-SO)' : isTata ? 'Northern Grid (IN-NO)' : 'Western Grid (IN-WE)');
-    const defaultLocation = extractedData.location || (isBescom ? 'Bengaluru Tech Hub, Karnataka' : isTata ? 'Gurugram Industrial Hub, Haryana / Delhi-NCR' : 'Pune IT Park, Maharashtra');
+    const defaultLocation = (typeof extractedData.location === 'string' && extractedData.location) || (isBescom ? 'Bengaluru Tech Hub, Karnataka' : isTata ? 'Gurugram Industrial Hub, Haryana / Delhi-NCR' : 'Pune IT Park, Maharashtra');
     const defaultLat = extractedData.latitude || (isBescom ? 12.9716 : isTata ? 28.6139 : 18.5204);
     const defaultLon = extractedData.longitude || (isBescom ? 77.5946 : isTata ? 77.2090 : 73.8567);
     const defaultSolarDni = extractedData.liveSolarDni || (isBescom ? 710 : isTata ? 580 : 650);
@@ -253,9 +258,9 @@ const ExtractedInfoForm = forwardRef(({ extractedData, onSubmitAudit, detectedLo
 
     setFormData(prev => ({
       ...prev,
-      facilityName: extractedData.facilityName || extractedData.name || extractedData.location || '',
+      facilityName: (typeof extractedData.facilityName === 'string' ? extractedData.facilityName : '') || (typeof extractedData.name === 'string' ? extractedData.name : '') || (typeof extractedData.location === 'string' ? extractedData.location : '') || '',
       consumerNo: extractedData.consumerNo || '',
-      discom: extractedData.discom || '',
+      discom: (typeof extractedData.discom === 'string' ? extractedData.discom : '') || '',
       location: defaultLocation,
       gridZone: defaultZone,
       ceaBaselineKgPerKwh: defaultCea,
@@ -294,8 +299,9 @@ const ExtractedInfoForm = forwardRef(({ extractedData, onSubmitAudit, detectedLo
     const cleanPeak = Number(formData.peakSurcharge) || Math.round(cleanBill * 0.22);
     const cleanPf = Number(formData.powerFactor) || 0.98;
 
-    const isBescom = (formData.discom || '').includes('BESCOM');
-    const isTata = (formData.discom || '').includes('Tata Power');
+    const discomStr = typeof formData.discom === 'string' ? formData.discom : '';
+    const isBescom = discomStr.includes('BESCOM');
+    const isTata = discomStr.includes('Tata Power');
     const defaultZone = isBescom ? 'Southern Grid (IN-SO)' : isTata ? 'Northern Grid (IN-NO)' : 'Western Grid (IN-WE)';
     const defaultCea = isBescom ? 0.690 : isTata ? 0.740 : 0.716;
     const defaultLocation = isBescom ? 'Bengaluru Tech Hub, Karnataka' : isTata ? 'Gurugram Industrial Hub, Haryana / Delhi-NCR' : 'Pune, Maharashtra';
@@ -513,7 +519,7 @@ const ExtractedInfoForm = forwardRef(({ extractedData, onSubmitAudit, detectedLo
                   <strong className="text-slate-950 text-xs">
                     {formData.location}
                   </strong>
-                  {formData.discom && (
+                  {typeof formData.discom === 'string' && formData.discom && (
                     <span className="px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 font-semibold text-[10px]">
                       {formData.discom.split('•')[0]?.trim()}
                     </span>

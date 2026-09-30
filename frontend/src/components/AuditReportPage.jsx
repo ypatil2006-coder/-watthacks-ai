@@ -496,15 +496,19 @@ export default function AuditReportPage({ auditData, onBackToUpload, onLaunchCon
   const hasDg = Boolean(auditData?.hasDg);
 
   // Live Location & Government Grid Intelligence
-  const location = auditData?.location || (auditData?.discom?.includes('BESCOM') ? 'Bengaluru, Karnataka' : auditData?.discom?.includes('Tata Power') ? 'Delhi-NCR / Haryana' : 'Pune, Maharashtra');
-  const gridZone = auditData?.gridZone || (auditData?.discom?.includes('BESCOM') ? 'Southern Grid (IN-SO)' : auditData?.discom?.includes('Tata Power') ? 'Northern Grid (IN-NO)' : 'Western Grid (IN-WE)');
-  const ceaBaseline = Number(auditData?.ceaBaselineKgPerKwh) || (auditData?.discom?.includes('BESCOM') ? 0.690 : auditData?.discom?.includes('Tata Power') ? 0.740 : 0.716);
-  const peakPenaltyRate = Number(auditData?.peakPenaltyRate) || (auditData?.discom?.includes('BESCOM') ? 1.25 : auditData?.discom?.includes('Tata Power') ? 1.75 : 1.50);
-  const nightRebateRate = Number(auditData?.nightRebateRate) || (auditData?.discom?.includes('BESCOM') ? 1.00 : auditData?.discom?.includes('Tata Power') ? 1.20 : 1.50);
+  const discomStr = typeof auditData?.discom === 'string' ? auditData.discom : '';
+  const isBescom = discomStr.includes('BESCOM');
+  const isTata = discomStr.includes('Tata Power');
+
+  const location = auditData?.location || (isBescom ? 'Bengaluru, Karnataka' : isTata ? 'Delhi-NCR / Haryana' : 'Pune, Maharashtra');
+  const gridZone = auditData?.gridZone || (isBescom ? 'Southern Grid (IN-SO)' : isTata ? 'Northern Grid (IN-NO)' : 'Western Grid (IN-WE)');
+  const ceaBaseline = Number(auditData?.ceaBaselineKgPerKwh) || (isBescom ? 0.690 : isTata ? 0.740 : 0.716);
+  const peakPenaltyRate = Number(auditData?.peakPenaltyRate) || (isBescom ? 1.25 : isTata ? 1.75 : 1.50);
+  const nightRebateRate = Number(auditData?.nightRebateRate) || (isBescom ? 1.00 : isTata ? 1.20 : 1.50);
   const liveSolarDni = Number(auditData?.liveSolarDni) || 640;
   const liveGridFreq = Number(auditData?.liveGridFreq) || 50.01;
-  const latitude = auditData?.latitude || (auditData?.discom?.includes('BESCOM') ? 12.9716 : auditData?.discom?.includes('Tata Power') ? 28.6139 : 18.5204);
-  const longitude = auditData?.longitude || (auditData?.discom?.includes('BESCOM') ? 77.5946 : auditData?.discom?.includes('Tata Power') ? 77.2090 : 73.8567);
+  const latitude = auditData?.latitude || (isBescom ? 12.9716 : isTata ? 28.6139 : 18.5204);
+  const longitude = auditData?.longitude || (isBescom ? 77.5946 : isTata ? 77.2090 : 73.8567);
 
   // Dynamic Mathematical Savings Engine
   const annualBill = billAmount * 12;

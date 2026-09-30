@@ -488,11 +488,15 @@ export default function BrsrAuditReportModal({
   const [loading, setLoading] = useState(false);
 
   // Live Location & Regional Tariff Intelligence
-  const location = formData?.location || formData?.region || (formData?.discom?.includes('BESCOM') ? 'Bengaluru, Karnataka' : formData?.discom?.includes('Tata Power') ? 'Delhi-NCR / Haryana' : 'Pune, Maharashtra');
-  const gridZone = formData?.gridZone || (formData?.discom?.includes('BESCOM') ? 'Southern Grid (IN-SO)' : formData?.discom?.includes('Tata Power') ? 'Northern Grid (IN-NO)' : 'Western Grid (IN-WE)');
-  const ceaBaseline = Number(formData?.ceaBaselineKgPerKwh || formData?.ceaBaseline) || (formData?.discom?.includes('BESCOM') ? 0.690 : formData?.discom?.includes('Tata Power') ? 0.740 : 0.716);
-  const peakPenaltyRate = Number(formData?.peakPenaltyRate) || (formData?.discom?.includes('BESCOM') ? 1.25 : formData?.discom?.includes('Tata Power') ? 1.75 : 1.50);
-  const nightRebateRate = Number(formData?.nightRebateRate) || (formData?.discom?.includes('BESCOM') ? 1.00 : formData?.discom?.includes('Tata Power') ? 1.20 : 1.50);
+  const discomStr = typeof formData?.discom === 'string' ? formData.discom : '';
+  const isBescom = discomStr.includes('BESCOM');
+  const isTata = discomStr.includes('Tata Power');
+
+  const location = formData?.location || formData?.region || (isBescom ? 'Bengaluru, Karnataka' : isTata ? 'Delhi-NCR / Haryana' : 'Pune, Maharashtra');
+  const gridZone = formData?.gridZone || (isBescom ? 'Southern Grid (IN-SO)' : isTata ? 'Northern Grid (IN-NO)' : 'Western Grid (IN-WE)');
+  const ceaBaseline = Number(formData?.ceaBaselineKgPerKwh || formData?.ceaBaseline) || (isBescom ? 0.690 : isTata ? 0.740 : 0.716);
+  const peakPenaltyRate = Number(formData?.peakPenaltyRate) || (isBescom ? 1.25 : isTata ? 1.75 : 1.50);
+  const nightRebateRate = Number(formData?.nightRebateRate) || (isBescom ? 1.00 : isTata ? 1.20 : 1.50);
 
   useEffect(() => {
     if (!isOpen) return;

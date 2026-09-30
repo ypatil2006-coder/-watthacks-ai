@@ -155,8 +155,8 @@ export default function Navbar({
               <span>
                 {detectedLocation 
                   ? ((detectedLocation.isInternational || detectedLocation.isVpn)
-                      ? `⚠️ ${detectedLocation.matchedRegionName?.split('&')[0]?.split('(')[0]?.trim() || 'Outside India'}`
-                      : `📍 ${detectedLocation.matchedRegionName?.split('&')[0]?.split('(')[0]?.trim()} • ${detectedLocation.discom?.split('(')[0]?.trim() || 'Grid'}`)
+                      ? `⚠️ ${(typeof detectedLocation.matchedRegionName === 'string' ? detectedLocation.matchedRegionName.split('&')[0]?.split('(')[0]?.trim() : '') || 'Outside India'}`
+                      : `📍 ${(typeof detectedLocation.matchedRegionName === 'string' ? detectedLocation.matchedRegionName.split('&')[0]?.split('(')[0]?.trim() : '') || 'Local Grid'} • ${(typeof detectedLocation.discom === 'string' ? detectedLocation.discom.split('(')[0]?.trim() : '') || 'Grid'}`)
                   : "📍 Detect Local Grid"}
               </span>
             </button>

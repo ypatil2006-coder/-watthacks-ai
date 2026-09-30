@@ -214,10 +214,10 @@ export default function ProductDashboard({ onBack }) {
       demand: preset.demand,
       solar: preset.solar,
       bess: preset.bess,
-      hasHvac: preset.equipment.includes('hvac'),
-      hasInverter: preset.equipment.includes('inverter'),
-      hasEv: preset.equipment.includes('ev'),
-      hasDg: preset.equipment.includes('dg')
+      hasHvac: Array.isArray(preset.equipment) && preset.equipment.includes('hvac'),
+      hasInverter: Array.isArray(preset.equipment) && preset.equipment.includes('inverter'),
+      hasEv: Array.isArray(preset.equipment) && preset.equipment.includes('ev'),
+      hasDg: Array.isArray(preset.equipment) && preset.equipment.includes('dg')
     });
   };
 
@@ -229,10 +229,11 @@ export default function ProductDashboard({ onBack }) {
 
   // Regional tariff delta (Peak vs Off-peak)
   const getDiscomDelta = () => {
-    if (formData.discom.includes('MSEDCL')) return 6.1; // +4.60 peak, -1.50 off-peak
-    if (formData.discom.includes('BESCOM')) return 5.0; // +3.80 peak, -1.20 off-peak
-    if (formData.discom.includes('Tata Power')) return 5.6; // +4.20 peak, -1.40 off-peak
-    if (formData.discom.includes('TANGEDCO')) return 4.5;
+    const d = typeof formData.discom === 'string' ? formData.discom : '';
+    if (d.includes('MSEDCL')) return 6.1; // +4.60 peak, -1.50 off-peak
+    if (d.includes('BESCOM')) return 5.0; // +3.80 peak, -1.20 off-peak
+    if (d.includes('Tata Power')) return 5.6; // +4.20 peak, -1.40 off-peak
+    if (d.includes('TANGEDCO')) return 4.5;
     return 5.2;
   };
   const discomDelta = getDiscomDelta();
@@ -267,7 +268,7 @@ export default function ProductDashboard({ onBack }) {
     let isMounted = true;
     async function fetchLiveTelemetry() {
       try {
-        const regionName = formData.discom.split('•')[0].split('(')[0].trim() || 'pune';
+        const regionName = typeof formData.discom === 'string' ? (formData.discom.split('•')[0].split('(')[0].trim() || 'pune') : 'pune';
         const res = await getLiveTelemetry(regionName);
         if (isMounted && res?.telemetry) {
           const t = res.telemetry;
@@ -328,7 +329,7 @@ export default function ProductDashboard({ onBack }) {
             setFormData(prev => ({
               ...prev,
               discom: `${res.discom} (${res.state}) • Peak +₹1.50/kWh`,
-              facilityName: prev.facilityName.includes('Pune') ? `${res.matchedCity} Facility Node` : prev.facilityName
+              facilityName: (typeof prev.facilityName === 'string' && prev.facilityName.includes('Pune')) ? `${res.matchedCity} Facility Node` : prev.facilityName
             }));
           }
         } catch (err) {
