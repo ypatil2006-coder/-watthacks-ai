@@ -12,7 +12,7 @@ import CustomCursor from './components/CustomCursor';
 import Footer from './components/Footer';
 import StripTransition from './components/StripTransition';
 import AuthModal from './components/AuthModal';
-import { getCurrentUser, logoutUser, resolveLocationFromGps, detectClientLocation } from './services/api';
+import { getCurrentUser, logoutUser } from './services/api';
 import { ArrowRight, FileCheck, Zap, ShieldCheck } from 'lucide-react';
 
 const VALID_PAGES = ['landing', 'bill-audit', 'audit-report', 'live-console'];
@@ -86,41 +86,15 @@ export default function App() {
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [pendingTargetPage, setPendingTargetPage] = useState(null);
 
-  // 📍 Live GPS Regional Grid Calibration
-  const [detectedLocation, setDetectedLocation] = useState(() => {
+  // Clear / Reset bill data cleanly so users can start fresh without stale presets
+  const handleResetBillData = () => {
+    setExtractedData(null);
+    setAuditData(null);
     try {
-      const saved = sessionStorage.getItem('watthacks_detected_location');
-      return saved ? JSON.parse(saved) : null;
-    } catch (e) {
-      return null;
-    }
-  });
-
-  const requestGpsLocation = async () => {
-    try {
-      const clientLoc = await detectClientLocation();
-      const res = await resolveLocationFromGps(clientLoc.latitude, clientLoc.longitude);
-      if (res?.success) {
-        const isForeign = !!clientLoc.isVpn || clientLoc.countryCode !== 'IN' || res.isInternational || clientLoc.latitude < 6.0 || clientLoc.latitude > 37.5 || clientLoc.longitude < 68.0 || clientLoc.longitude > 97.5;
-        const fullLocation = {
-          ...res,
-          matchedRegionName: isForeign ? (clientLoc.city || clientLoc.country || res.matchedRegionName) : res.matchedRegionName,
-          isInternational: isForeign,
-          isVpn: clientLoc.isVpn,
-          source: clientLoc.source
-        };
-        setDetectedLocation(fullLocation);
-        sessionStorage.setItem('watthacks_detected_location', JSON.stringify(fullLocation));
-      }
-    } catch (e) {
-      console.warn('Location resolution notice in App:', e.message);
-    }
+      sessionStorage.removeItem('watthacks_extracted_data');
+      sessionStorage.removeItem('watthacks_audit_data');
+    } catch (e) {}
   };
-
-  // Proactively request browser location on first load
-  useEffect(() => {
-    requestGpsLocation();
-  }, []);
 
   // Validate JWT session on initial load and guard product routes
   useEffect(() => {
@@ -463,8 +437,8 @@ export default function App() {
         currentUser={currentUser}
         onOpenAuth={() => setShowAuthModal(true)}
         onLogout={handleLogout}
-        detectedLocation={detectedLocation}
-        onDetectLocation={requestGpsLocation}
+        hasActiveBill={!!extractedData}
+        onResetBill={handleResetBillData}
       />
 
       {/* ======================================================== */}
@@ -522,14 +496,18 @@ export default function App() {
         <main className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-12 w-full my-auto py-8 pt-24 sm:pt-28 animate-fadeIn">
           <div className="space-y-12">
             {/* Tagline + Bill Upload & OCR Scanning Block */}
-            <BillUploadSection onExtractComplete={handleExtractComplete} />
+            <BillUploadSection 
+              onExtractComplete={handleExtractComplete} 
+              onResetData={handleResetBillData}
+              hasData={!!extractedData}
+            />
 
             {/* Extracted Information & Confirmation Form (Auto-Filled + Blank Manual Fields) */}
             <ExtractedInfoForm 
               ref={formRef} 
               extractedData={extractedData} 
               onSubmitAudit={handleSubmitAudit} 
-              detectedLocation={detectedLocation}
+              onResetData={handleResetBillData}
             />
           </div>
         </main>
@@ -542,7 +520,10 @@ export default function App() {
         <main className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-12 w-full my-auto py-8 pt-24 sm:pt-28 animate-fadeIn">
           <AuditReportPage 
             auditData={auditData} 
-            onBackToUpload={() => handleNavigate('bill-audit')}
+            onBackToUpload={() => {
+              handleResetBillData();
+              handleNavigate('bill-audit');
+            }}
             onLaunchConsole={() => handleNavigate('live-console')}
           />
         </main>

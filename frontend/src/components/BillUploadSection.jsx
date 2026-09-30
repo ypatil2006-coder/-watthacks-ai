@@ -80,7 +80,7 @@ export const SAMPLE_BILLS = [
   }
 ];
 
-export default function BillUploadSection({ onExtractComplete }) {
+export default function BillUploadSection({ onExtractComplete, onResetData, hasData }) {
   const [dragActive, setDragActive] = useState(false);
   const [extracting, setExtracting] = useState(false);
   const [extractProgress, setExtractProgress] = useState(0);
@@ -103,22 +103,26 @@ export default function BillUploadSection({ onExtractComplete }) {
         const res = await uploadBill(billDataOrFile);
         if (res?.extracted) {
           const ext = res.extracted;
+          const facilityAddr = ext.facilityAddress || ext.consumerAddress || ext.location || '';
           finalBill = {
             id: 'extracted-gemini',
             name: ext.consumerName || 'Commercial Facility Node',
             facilityName: ext.consumerName || 'Commercial Facility Node',
-            location: ext.discom || 'Pune, Maharashtra',
+            facilityAddress: facilityAddr,
+            location: facilityAddr,
+            gridZone: ext.gridZone || (ext.discom?.includes('BESCOM') ? 'Southern Grid (IN-SO)' : ext.discom?.includes('Tata') ? 'Northern Grid (IN-NO)' : 'Western Grid (IN-WE)'),
+            ceaBaselineKgPerKwh: ext.ceaBaselineKgPerKwh || 0.716,
             billAmount: ext.billedAmountInr || Math.round((ext.totalUnitsKwh || 48500) * 8.5),
             demand: ext.billedDemandKva || 500,
             units: ext.totalUnitsKwh || 48500,
             peakSurcharge: ext.todSurchargePaidInr || Math.round((ext.billedAmountInr || 850000) * 0.22),
-            consumerNo: ext.consumerNumber || 'MSEDCL-84920194',
+            consumerNo: ext.consumerNumber || '',
             billingCycle: ext.billingPeriod || 'Current Month 2026',
-            discom: ext.discom || 'MSEDCL (Maharashtra) • HT-1 Commercial',
-            tariffRate: 'Peak: ₹11.80/kWh | Off-Peak: ₹3.50/kWh',
+            discom: ext.discom || 'State Electricity Distribution Co.',
+            tariffRate: 'ToD Commercial Tariff Schedule',
             powerFactor: ext.powerFactor || 0.98,
-            peakPenaltyRate: 1.50,
-            nightRebateRate: 1.50,
+            peakPenaltyRate: ext.peakPenaltyRate || 1.50,
+            nightRebateRate: ext.nightRebateRate || 1.50,
             fileName: customFileName || billDataOrFile.name
           };
         }
@@ -266,16 +270,29 @@ export default function BillUploadSection({ onExtractComplete }) {
       <section id="bill-upload-block" className="max-w-3xl mx-auto">
         <div className="liquid-glass rounded-3xl p-6 sm:p-10 shadow-2xl border border-white/80 space-y-6">
           
-          <div className="text-center space-y-1">
-            <span className="text-xs font-mono uppercase text-emerald-800 font-semibold tracking-wider">
-              Step 1 • Digital Bill Ingestion
-            </span>
-            <h2 className="text-xl sm:text-2xl font-semibold text-slate-900">
-              Upload Commercial Electricity Bill
-            </h2>
-            <p className="text-xs text-slate-500 font-light">
-              Accepts PDF, JPG, PNG from MSEDCL, BESCOM, Tata Power, BSES, TANGEDCO or any DISCOM
-            </p>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-900/10 pb-4">
+            <div>
+              <span className="text-xs font-mono uppercase text-emerald-800 font-semibold tracking-wider">
+                Step 1 • Digital Bill Ingestion
+              </span>
+              <h2 className="text-xl sm:text-2xl font-semibold text-slate-900">
+                Upload Commercial Electricity Bill
+              </h2>
+              <p className="text-xs text-slate-500 font-light">
+                Accepts PDF, JPG, PNG from MSEDCL, BESCOM, Tata Power, BSES, TANGEDCO or any DISCOM
+              </p>
+            </div>
+
+            {hasData && onResetData && (
+              <button
+                type="button"
+                onClick={onResetData}
+                className="px-3.5 py-2 rounded-xl border border-slate-300 hover:border-rose-400 bg-white hover:bg-rose-50 text-slate-700 hover:text-rose-700 text-xs font-mono transition-all flex items-center gap-1.5 cursor-pointer shadow-sm active:scale-95 w-fit"
+                title="Wipe currently loaded bill and start fresh"
+              >
+                <span>↺ Clear Loaded Bill</span>
+              </button>
+            )}
           </div>
 
           {/* Upload Drop Zone */}

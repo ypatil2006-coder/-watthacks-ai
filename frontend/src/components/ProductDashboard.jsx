@@ -27,7 +27,6 @@ import {
 } from 'lucide-react';
 import BrsrAuditReportModal from './BrsrAuditReportModal';
 import { 
-  resolveLocationFromGps, 
   getLiveTelemetry, 
   optimizeLoadShift, 
   uploadBill 
@@ -198,7 +197,6 @@ export default function ProductDashboard({ onBack }) {
   const [downloadModal, setDownloadModal] = useState(false);
 
   // Backend Integration State
-  const [geoLoading, setGeoLoading] = useState(false);
   const [billUploading, setBillUploading] = useState(false);
   const [billExtracted, setBillExtracted] = useState(null);
   const [backendOptimization, setBackendOptimization] = useState(null);
@@ -313,38 +311,6 @@ export default function ProductDashboard({ onBack }) {
     };
   }, [viewMode, formData.discom, demandNum, solarNum, bessNum]);
 
-  // 2. GPS LOCATION RESOLUTION
-  const handleDetectLocation = () => {
-    if (!navigator.geolocation) {
-      alert("Geolocation is not supported by your browser.");
-      return;
-    }
-    setGeoLoading(true);
-    navigator.geolocation.getCurrentPosition(
-      async (pos) => {
-        try {
-          const { latitude, longitude } = pos.coords;
-          const res = await resolveLocationFromGps(latitude, longitude);
-          if (res?.success) {
-            setFormData(prev => ({
-              ...prev,
-              discom: `${res.discom} (${res.state}) • Peak +₹1.50/kWh`,
-              facilityName: (typeof prev.facilityName === 'string' && prev.facilityName.includes('Pune')) ? `${res.matchedCity} Facility Node` : prev.facilityName
-            }));
-          }
-        } catch (err) {
-          console.error("Failed to resolve GPS location:", err);
-        } finally {
-          setGeoLoading(false);
-        }
-      },
-      (err) => {
-        console.warn("GPS access denied:", err.message);
-        setGeoLoading(false);
-      },
-      { timeout: 8000 }
-    );
-  };
 
   // 3. MULTIMODAL BILL INGESTION
   const handleBillUpload = async (e) => {
@@ -603,21 +569,9 @@ export default function ProductDashboard({ onBack }) {
                   </div>
 
                   <div>
-                    <div className="flex items-center justify-between mb-1.5">
-                      <label className="text-xs font-mono text-slate-500 uppercase">
-                        Regional DISCOM / Tariff Regime
-                      </label>
-                      <button
-                        type="button"
-                        onClick={handleDetectLocation}
-                        disabled={geoLoading}
-                        className="text-[11px] font-mono text-emerald-700 hover:text-emerald-800 flex items-center gap-1 font-semibold cursor-pointer active:scale-95 transition-all"
-                        title="Detect nearest Indian regional grid via browser GPS"
-                      >
-                        <Radio className={`w-3 h-3 ${geoLoading ? 'animate-spin' : ''}`} />
-                        <span>{geoLoading ? 'Resolving Grid...' : '📍 Auto-Detect GPS'}</span>
-                      </button>
-                    </div>
+                    <label className="block text-xs font-mono text-slate-500 uppercase mb-1.5">
+                      Regional DISCOM / Tariff Regime
+                    </label>
                     <select
                       value={formData.discom}
                       onChange={(e) => setFormData({ ...formData, discom: e.target.value })}

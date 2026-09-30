@@ -9,90 +9,31 @@ import {
   Battery, 
   Sun, 
   FileCheck, 
-  MapPin, 
-  Radio, 
-  Globe, 
-  RefreshCw, 
-  Loader2 
+  MapPin,
+  RotateCcw
 } from 'lucide-react';
-import { resolveLocationFromGps, getLiveTelemetry, detectClientLocation } from '../services/api';
 
-const GRID_HUBS = [
-  {
-    id: 'pune',
-    label: 'Pune / MSEDCL (0.716 kg/kWh)',
-    shortLabel: 'Pune / MSEDCL',
-    factor: '0.716 kg/kWh',
-    regionName: 'Pune IT Park, Maharashtra',
-    discom: 'MSEDCL (Maharashtra) • HT-1 Commercial',
-    gridZone: 'Western Grid (IN-WE)',
-    ceaBaselineKgPerKwh: 0.716,
-    coords: { lat: 18.5204, lon: 73.8567 },
-    solarDni: 650,
-    freq: 50.02
-  },
-  {
-    id: 'bengaluru',
-    label: 'Bengaluru / BESCOM (0.690 kg/kWh)',
-    shortLabel: 'Bengaluru / BESCOM',
-    factor: '0.690 kg/kWh',
-    regionName: 'Bengaluru Tech Hub, Karnataka',
-    discom: 'BESCOM (Karnataka) • HT-2A Commercial',
-    gridZone: 'Southern Grid (IN-SO)',
-    ceaBaselineKgPerKwh: 0.690,
-    coords: { lat: 12.9716, lon: 77.5946 },
-    solarDni: 710,
-    freq: 49.99
-  },
-  {
-    id: 'delhi',
-    label: 'Delhi-NCR / Tata Power (0.740 kg/kWh)',
-    shortLabel: 'Delhi-NCR / Tata Power',
-    factor: '0.740 kg/kWh',
-    regionName: 'Gurugram Industrial Hub, Haryana / Delhi-NCR',
-    discom: 'Tata Power (Delhi/NCR) • HT Industrial Continuous',
-    gridZone: 'Northern Grid (IN-NO)',
-    ceaBaselineKgPerKwh: 0.740,
-    coords: { lat: 28.6139, lon: 77.2090 },
-    solarDni: 580,
-    freq: 50.01
-  },
-  {
-    id: 'mumbai',
-    label: 'Mumbai / Adani (0.716 kg/kWh)',
-    shortLabel: 'Mumbai / Adani',
-    factor: '0.716 kg/kWh',
-    regionName: 'Mumbai Financial Hub, Maharashtra',
-    discom: 'Adani Electricity / BEST (Mumbai) • HT Commercial',
-    gridZone: 'Western Grid (IN-WE)',
-    ceaBaselineKgPerKwh: 0.716,
-    coords: { lat: 19.0760, lon: 72.8777 },
-    solarDni: 630,
-    freq: 50.02
-  }
-];
-
-const ExtractedInfoForm = forwardRef(({ extractedData, onSubmitAudit, detectedLocation }, ref) => {
+const ExtractedInfoForm = forwardRef(({ extractedData, onSubmitAudit, onResetData }, ref) => {
   const [formData, setFormData] = useState({
     // Extracted fields
     facilityName: '',
     consumerNo: '',
     discom: '',
+    location: '',
+    gridZone: '',
+    ceaBaselineKgPerKwh: 0.716,
     billingCycle: '',
     billAmount: '',
     demand: '',
     units: '',
     peakSurcharge: '',
-    powerFactor: '',
-
-    // Live Grid & Location Telemetry (Dynamic - NOT hardcoded)
-    location: '',
-    gridZone: '',
-    ceaBaselineKgPerKwh: null,
+    powerFactor: '0.98',
+    peakPenaltyRate: 1.50,
+    nightRebateRate: 1.50,
     latitude: null,
     longitude: null,
-    liveSolarDni: null,
-    liveGridFreq: null,
+    liveSolarDni: 650,
+    liveGridFreq: 50.00,
 
     // Blank / User-provided fields (NOT in bill)
     solarKwp: '',
@@ -105,235 +46,45 @@ const ExtractedInfoForm = forwardRef(({ extractedData, onSubmitAudit, detectedLo
   });
 
   const [hasScraped, setHasScraped] = useState(false);
-  const [locLoading, setLocLoading] = useState(false);
-  const [liveTelemetryStatus, setLiveTelemetryStatus] = useState(null);
-  const [selectedHubId, setSelectedHubId] = useState(null);
-  const [locationSource, setLocationSource] = useState(null); // 'gps' | 'preset' | null
-  const [isInternationalLocation, setIsInternationalLocation] = useState(false);
-  const [internationalLocationName, setInternationalLocationName] = useState('');
 
-  // Auto-detect or manually set location & fetch live government CEA grid data
-  const handleDetectLocation = async (manualCoords = null, hubId = null, hubName = null) => {
-    setLocLoading(true);
-    try {
-      if (manualCoords) {
-        // Instant synchronous application of the preset Indian hub
-        const foundHub = GRID_HUBS.find(h => h.id === hubId) || GRID_HUBS[0];
-        setSelectedHubId(hubId || foundHub.id);
-        setLocationSource('preset');
-        setIsInternationalLocation(false);
-        setInternationalLocationName('');
-
-        setFormData(prev => ({
-          ...prev,
-          latitude: manualCoords.lat,
-          longitude: manualCoords.lon,
-          discom: foundHub.discom,
-          location: hubName || foundHub.regionName,
-          gridZone: foundHub.gridZone,
-          ceaBaselineKgPerKwh: foundHub.ceaBaselineKgPerKwh,
-          liveSolarDni: foundHub.solarDni,
-          liveGridFreq: foundHub.freq
-        }));
-
-        setLiveTelemetryStatus({
-          matchedRegion: hubName || foundHub.regionName,
-          gridZone: foundHub.gridZone,
-          ceaFactor: foundHub.ceaBaselineKgPerKwh,
-          solarDni: foundHub.solarDni,
-          freq: foundHub.freq,
-          isGps: false
-        });
-
-        // Background update real-time telemetry if available
-        getLiveTelemetry({ lat: manualCoords.lat, lon: manualCoords.lon }).then(telRes => {
-          if (telRes?.telemetry) {
-            const t = telRes.telemetry;
-            setFormData(p => ({
-              ...p,
-              liveSolarDni: t?.liveSolarWeather?.directNormalSolarIrradianceWm2 || p.liveSolarDni,
-              liveGridFreq: t?.gridFrequencyHz || p.liveGridFreq
-            }));
-          }
-        }).catch(() => {});
-
-        return;
-      }
-
-      // Multi-source detection: Check IP network location & Browser GPS
-      const clientLoc = await detectClientLocation();
-      const lat = clientLoc.latitude || 18.5204;
-      const lon = clientLoc.longitude || 73.8567;
-      const isGps = clientLoc.source === 'browser_gps';
-      const isForeign = !!clientLoc.isVpn || clientLoc.countryCode !== 'IN' || lat < 6.0 || lat > 37.5 || lon < 68.0 || lon > 97.5;
-      const foreignName = clientLoc.city || clientLoc.country || 'Non-Indian Node';
-
-      if (isForeign) {
-        setIsInternationalLocation(true);
-        setInternationalLocationName(foreignName);
-        setSelectedHubId(null);
-        setLocationSource('gps');
-        setFormData(prev => ({
-          ...prev,
-          location: `${foreignName} (International Location)`,
-          gridZone: 'Non-Indian Grid Node',
-          ceaBaselineKgPerKwh: null,
-          latitude: +lat.toFixed(4),
-          longitude: +lon.toFixed(4),
-          liveSolarDni: 590,
-          liveGridFreq: 50.00
-        }));
-        return;
-      }
-
-      setIsInternationalLocation(false);
-      setInternationalLocationName('');
-
-      // 1. Resolve Indian Government Grid Zone & CEA Baseline from Coordinates
-      const geoRes = await resolveLocationFromGps(lat, lon);
-      const matched = geoRes?.matchedRegionId || 'pune';
-      setSelectedHubId(matched);
-      setLocationSource('gps');
-
-      const ceaFactor = geoRes?.ceaBaselineKgPerKwh || (matched === 'bengaluru' ? 0.690 : matched === 'delhi' ? 0.740 : 0.716);
-      const discomName = geoRes?.discom || (matched === 'bengaluru' ? 'BESCOM (Karnataka) • HT-2A Commercial' : matched === 'delhi' ? 'Tata Power (Delhi/NCR) • HT Industrial Continuous' : 'MSEDCL (Maharashtra) • HT-1 Commercial');
-      const gridZoneName = geoRes?.gridZone || (matched === 'bengaluru' ? 'Southern Grid (IN-SO)' : matched === 'delhi' ? 'Northern Grid (IN-NO)' : 'Western Grid (IN-WE)');
-      const resolvedLocationName = geoRes?.matchedRegionName || `${lat.toFixed(2)}°N, ${lon.toFixed(2)}°E`;
-
-      // 2. Fetch Live Real-Time Satellite Solar & Grid Telemetry
-      const telRes = await getLiveTelemetry({ lat, lon });
-      const t = telRes?.telemetry;
-      const solarDni = t?.liveSolarWeather?.directNormalSolarIrradianceWm2 || 650;
-      const freq = t?.gridFrequencyHz || 50.02;
-
-      setFormData(prev => ({
-        ...prev,
-        latitude: +lat.toFixed(4),
-        longitude: +lon.toFixed(4),
-        discom: prev.discom || discomName,
-        location: resolvedLocationName,
-        gridZone: gridZoneName,
-        ceaBaselineKgPerKwh: ceaFactor,
-        liveSolarDni: solarDni,
-        liveGridFreq: freq
-      }));
-
-      setLiveTelemetryStatus({
-        matchedRegion: resolvedLocationName,
-        gridZone: gridZoneName,
-        ceaFactor,
-        solarDni,
-        freq,
-        isGps
-      });
-    } catch (err) {
-      console.warn('Location detection notice, applying default hub calibration:', err.message);
-      const defaultHub = GRID_HUBS[0];
-      setSelectedHubId('pune');
-      setLocationSource('gps');
-      setIsInternationalLocation(false);
-      setFormData(prev => ({
-        ...prev,
-        latitude: defaultHub.coords.lat,
-        longitude: defaultHub.coords.lon,
-        discom: prev.discom || defaultHub.discom,
-        location: prev.location || defaultHub.regionName,
-        gridZone: prev.gridZone || defaultHub.gridZone,
-        ceaBaselineKgPerKwh: prev.ceaBaselineKgPerKwh || defaultHub.ceaBaselineKgPerKwh,
-        liveSolarDni: prev.liveSolarDni || defaultHub.solarDni,
-        liveGridFreq: prev.liveGridFreq || defaultHub.freq
-      }));
-    } finally {
-      setLocLoading(false);
-    }
-  };
-
-  // Proactively auto-detect location on mount if not provided by extractedData
+  // Sync state whenever new bill data is uploaded or extracted
   useEffect(() => {
     if (!extractedData) {
-      if (detectedLocation) {
-        const isVpn = !!detectedLocation.isVpn;
-        if (isVpn || detectedLocation.isInternational) {
-          setIsInternationalLocation(true);
-          setInternationalLocationName(detectedLocation.matchedRegionName || 'International Location');
-          setLocationSource('gps');
-          setFormData(prev => ({
-            ...prev,
-            latitude: detectedLocation.detectedCoordinates?.latitude || null,
-            longitude: detectedLocation.detectedCoordinates?.longitude || null,
-            location: `${detectedLocation.matchedRegionName || 'International'} (International Location)`,
-            gridZone: 'Non-Indian Grid Node',
-            ceaBaselineKgPerKwh: null,
-            liveSolarDni: 590,
-            liveGridFreq: 50.00
-          }));
-          return;
-        }
-        const matched = detectedLocation.matchedRegionId || 'pune';
-        setSelectedHubId(matched);
-        setLocationSource('gps');
-        setIsInternationalLocation(false);
-        setFormData(prev => ({
-          ...prev,
-          latitude: detectedLocation.detectedCoordinates?.latitude || prev.latitude || 18.5204,
-          longitude: detectedLocation.detectedCoordinates?.longitude || prev.longitude || 73.8567,
-          discom: prev.discom || `${detectedLocation.discom} • HT Commercial`,
-          location: detectedLocation.matchedRegionName || prev.location || 'Pune IT Park, Maharashtra',
-          gridZone: detectedLocation.gridZone || prev.gridZone || 'Western Grid (IN-WE)',
-          ceaBaselineKgPerKwh: detectedLocation.ceaBaselineKgPerKwh || prev.ceaBaselineKgPerKwh || 0.716,
-          liveSolarDni: prev.liveSolarDni || 650,
-          liveGridFreq: prev.liveGridFreq || 50.02
-        }));
-      } else {
-        handleDetectLocation();
-      }
+      setHasScraped(false);
+      return;
     }
-  }, [extractedData, detectedLocation]);
 
-  // Sync when extractedData changes
-  useEffect(() => {
-    if (!extractedData) return;
     const discomStr = typeof extractedData.discom === 'string' ? extractedData.discom : '';
-    const nameStr = typeof extractedData.name === 'string' ? extractedData.name : '';
-    const locStr = typeof extractedData.location === 'string' ? extractedData.location : '';
-    const facStr = typeof extractedData.facilityName === 'string' ? extractedData.facilityName : '';
-
-    const isBescom = discomStr.includes('BESCOM') || nameStr.includes('BESCOM') || locStr.includes('Bengaluru') || facStr.includes('Bengaluru');
-    const isTata = discomStr.includes('Tata Power') || nameStr.includes('Tata') || locStr.includes('Gurugram') || locStr.includes('Delhi') || facStr.includes('Gurugram');
+    const isBescom = discomStr.includes('BESCOM');
+    const isTata = discomStr.includes('Tata Power');
     
-    const defaultCea = extractedData.ceaBaselineKgPerKwh || extractedData.ceaBaseline || (isBescom ? 0.690 : isTata ? 0.740 : 0.716);
-    const defaultZone = extractedData.gridZone || (isBescom ? 'Southern Grid (IN-SO)' : isTata ? 'Northern Grid (IN-NO)' : 'Western Grid (IN-WE)');
-    const defaultLocation = (typeof extractedData.location === 'string' && extractedData.location) || (isBescom ? 'Bengaluru Tech Hub, Karnataka' : isTata ? 'Gurugram Industrial Hub, Haryana / Delhi-NCR' : 'Pune IT Park, Maharashtra');
-    const defaultLat = extractedData.latitude || (isBescom ? 12.9716 : isTata ? 28.6139 : 18.5204);
-    const defaultLon = extractedData.longitude || (isBescom ? 77.5946 : isTata ? 77.2090 : 73.8567);
-    const defaultSolarDni = extractedData.liveSolarDni || (isBescom ? 710 : isTata ? 580 : 650);
-    const defaultFreq = extractedData.liveGridFreq || (isBescom ? 49.99 : isTata ? 50.01 : 50.02);
-
-    setSelectedHubId(isBescom ? 'bengaluru' : isTata ? 'delhi' : 'pune');
-    setLocationSource('preset');
+    const resolvedZone = extractedData.gridZone || (isBescom ? 'Southern Grid (IN-SO)' : isTata ? 'Northern Grid (IN-NO)' : 'Western Grid (IN-WE)');
+    const resolvedCea = extractedData.ceaBaselineKgPerKwh || extractedData.ceaBaseline || (isBescom ? 0.690 : isTata ? 0.740 : 0.716);
+    const resolvedLocation = extractedData.facilityAddress || extractedData.consumerAddress || extractedData.location || '';
+    const resolvedName = extractedData.facilityName || extractedData.name || extractedData.consumerName || '';
 
     setFormData(prev => ({
       ...prev,
-      facilityName: (typeof extractedData.facilityName === 'string' ? extractedData.facilityName : '') || (typeof extractedData.name === 'string' ? extractedData.name : '') || (typeof extractedData.location === 'string' ? extractedData.location : '') || '',
-      consumerNo: extractedData.consumerNo || '',
-      discom: (typeof extractedData.discom === 'string' ? extractedData.discom : '') || '',
-      location: defaultLocation,
-      gridZone: defaultZone,
-      ceaBaselineKgPerKwh: defaultCea,
-      latitude: defaultLat,
-      longitude: defaultLon,
-      liveSolarDni: defaultSolarDni,
-      liveGridFreq: defaultFreq,
-      billingCycle: extractedData.billingCycle || 'August 2026',
-      billAmount: extractedData.billAmount || '',
-      demand: extractedData.demand || '',
-      units: extractedData.units || '',
-      peakSurcharge: extractedData.peakSurcharge || '',
+      facilityName: resolvedName,
+      consumerNo: extractedData.consumerNo || extractedData.consumerNumber || '',
+      discom: discomStr,
+      location: resolvedLocation,
+      gridZone: resolvedZone,
+      ceaBaselineKgPerKwh: resolvedCea,
+      latitude: extractedData.latitude || (isBescom ? 12.9716 : isTata ? 28.6139 : 18.5204),
+      longitude: extractedData.longitude || (isBescom ? 77.5946 : isTata ? 77.2090 : 73.8567),
+      liveSolarDni: extractedData.liveSolarDni || (isBescom ? 710 : isTata ? 580 : 650),
+      liveGridFreq: extractedData.liveGridFreq || (isBescom ? 49.99 : isTata ? 50.01 : 50.02),
+      billingCycle: extractedData.billingCycle || extractedData.billingPeriod || '',
+      billAmount: extractedData.billAmount || extractedData.billedAmountInr || '',
+      demand: extractedData.demand || extractedData.billedDemandKva || '',
+      units: extractedData.units || extractedData.totalUnitsKwh || '',
+      peakSurcharge: extractedData.peakSurcharge || extractedData.todSurchargePaidInr || '',
       powerFactor: extractedData.powerFactor || '0.98',
       peakPenaltyRate: extractedData.peakPenaltyRate || (isBescom ? 1.25 : isTata ? 1.75 : 1.50),
       nightRebateRate: extractedData.nightRebateRate || (isBescom ? 1.00 : isTata ? 1.20 : 1.50),
       
-      // Keep manual fields blank as requested:
+      // Preserve user inputs if already typed:
       solarKwp: prev.solarKwp || '',
       bessKwh: prev.bessKwh || '',
       floorArea: prev.floorArea || ''
@@ -343,11 +94,6 @@ const ExtractedInfoForm = forwardRef(({ extractedData, onSubmitAudit, detectedLo
 
   const handleSubmit = (e) => {
     e.preventDefault();
-
-    if (isInternationalLocation) {
-      alert("⚠️ International Location Detected: WattHacks AI requires calibration to an Indian state grid and DISCOM tariff schedule (MSEDCL, BESCOM, Tata Power, etc.) to generate the audit report. Please click an Indian Regional Hub above (Pune, Bengaluru, Delhi-NCR, Mumbai) to proceed.");
-      return;
-    }
 
     const cleanDemand = Number(formData.demand) || 500;
     const cleanBill = Number(formData.billAmount) || Math.round(cleanDemand * 1540);
@@ -360,16 +106,15 @@ const ExtractedInfoForm = forwardRef(({ extractedData, onSubmitAudit, detectedLo
     const isTata = discomStr.includes('Tata Power');
     const defaultZone = isBescom ? 'Southern Grid (IN-SO)' : isTata ? 'Northern Grid (IN-NO)' : 'Western Grid (IN-WE)';
     const defaultCea = isBescom ? 0.690 : isTata ? 0.740 : 0.716;
-    const defaultLocation = isBescom ? 'Bengaluru Tech Hub, Karnataka' : isTata ? 'Gurugram Industrial Hub, Haryana / Delhi-NCR' : 'Pune, Maharashtra';
     const defaultPeakPenalty = isBescom ? 1.25 : isTata ? 1.75 : 1.50;
     const defaultNightRebate = isBescom ? 1.00 : isTata ? 1.20 : 1.50;
 
     const payload = {
       ...formData,
       facilityName: formData.facilityName || 'Commercial Facility Node',
-      consumerNo: formData.consumerNo || '084729104829',
-      discom: formData.discom || 'MSEDCL (Maharashtra) • HT-1 Commercial',
-      location: formData.location || defaultLocation,
+      consumerNo: formData.consumerNo || '',
+      discom: formData.discom || 'State Electricity Distribution Co.',
+      location: formData.location || 'Facility Site',
       gridZone: formData.gridZone || defaultZone,
       ceaBaselineKgPerKwh: Number(formData.ceaBaselineKgPerKwh) || defaultCea,
       latitude: Number(formData.latitude) || (isBescom ? 12.9716 : isTata ? 28.6139 : 18.5204),
@@ -378,7 +123,7 @@ const ExtractedInfoForm = forwardRef(({ extractedData, onSubmitAudit, detectedLo
       liveGridFreq: Number(formData.liveGridFreq) || 50.01,
       peakPenaltyRate: Number(formData.peakPenaltyRate) || defaultPeakPenalty,
       nightRebateRate: Number(formData.nightRebateRate) || defaultNightRebate,
-      billingCycle: formData.billingCycle || 'August 2026',
+      billingCycle: formData.billingCycle || 'Current Period',
       demand: cleanDemand,
       billAmount: cleanBill,
       units: cleanUnits,
@@ -433,207 +178,30 @@ const ExtractedInfoForm = forwardRef(({ extractedData, onSubmitAudit, detectedLo
             </p>
           </div>
 
-          <div className="text-right sm:text-right font-mono text-xs text-slate-500">
-            <span>Bill Value: </span>
-            <strong className="text-slate-900 text-sm block sm:inline">
-              {formatInr(formData.billAmount)}
-            </strong>
-          </div>
-        </div>
-
-        {/* ======================================================== */}
-        {/* LIVE GOVERNMENT GRID & LOCATION SYNC (GPS / CEA)         */}
-        {/* ======================================================== */}
-        <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-emerald-500/10 via-slate-50 to-blue-500/10 border border-emerald-500/30 space-y-3">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-            <div className="flex items-center gap-2">
-              <Radio className="w-4 h-4 text-emerald-600 animate-pulse" />
-              <h3 className="text-xs font-semibold text-slate-900 uppercase font-mono tracking-wider">
-                Live Government Grid & Location Intelligence
-              </h3>
-            </div>
-            <span className="text-[10px] font-mono text-emerald-800 bg-emerald-500/15 px-2.5 py-0.5 rounded-full font-semibold border border-emerald-500/20">
-              India CEA Baseline • Real-Time Satellite Solar
-            </span>
-          </div>
-
-          <p className="text-xs text-slate-600 font-light">
-            Fetch real-time grid carbon factors from the <strong>Govt of India Central Electricity Authority (CEA)</strong> and live satellite solar radiation for your facility's exact location.
-          </p>
-
-          {/* International / Overseas Location Notice Banner */}
-          {isInternationalLocation && (
-            <div className="p-4 rounded-2xl bg-amber-500/10 border-2 border-amber-500/40 text-amber-950 space-y-2.5 shadow-sm animate-fade-in">
-              <div className="flex items-center gap-2.5">
-                <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0 animate-bounce" />
-                <div>
-                  <h4 className="text-xs font-bold font-mono uppercase tracking-wider text-amber-900">
-                    ⚠️ International Location Detected ({internationalLocationName || 'Outside India'})
-                  </h4>
-                  <span className="text-[11px] text-amber-700 font-medium">
-                    Audit Generation Blocked • Indian Tariff Model Calibration Required
-                  </span>
-                </div>
-              </div>
-
-              <p className="text-xs text-amber-800/90 leading-relaxed font-sans">
-                WattHacks AI models commercial energy tariffs, peak/off-peak ToD schedules, and carbon accounting according to the <strong>Government of India Central Electricity Authority (CEA)</strong> baseline (0.716 kg CO₂/kWh) and state utility DISCOMs (MSEDCL, BESCOM, Tata Power, Adani). You cannot proceed with an international grid node.
-              </p>
-
-              <div className="flex items-center gap-2 text-xs font-mono font-semibold text-amber-950 bg-amber-500/15 px-3 py-2 rounded-xl border border-amber-500/30">
-                <span className="relative flex h-2 w-2">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-500 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-600"></span>
-                </span>
-                <span>To proceed, please click any of the 4 Indian Regional Hub presets below (e.g., Pune / MSEDCL or Bengaluru / BESCOM).</span>
-              </div>
-            </div>
-          )}
-
-          <div className="flex flex-wrap items-center gap-2 pt-1">
-            <button
-              type="button"
-              onClick={() => handleDetectLocation()}
-              disabled={locLoading}
-              className={`px-3.5 py-2 rounded-xl text-xs font-mono font-medium transition-all flex items-center gap-2 cursor-pointer active:scale-95 shadow-sm disabled:opacity-50 ${
-                formData.location && locationSource && locationSource !== 'preset'
-                  ? 'bg-slate-950 text-emerald-300 border-2 border-emerald-400 ring-2 ring-emerald-500/40 shadow-md shadow-emerald-500/20'
-                  : 'bg-slate-900 hover:bg-slate-800 text-white'
-              }`}
-            >
-              {locLoading ? (
-                <>
-                  <Loader2 className="w-3.5 h-3.5 animate-spin text-emerald-400" />
-                  <span>Querying Live Network & Grid APIs...</span>
-                </>
-              ) : (
-                <>
-                  <MapPin className={`w-3.5 h-3.5 ${formData.location && locationSource && locationSource !== 'preset' ? 'text-emerald-300 animate-pulse' : 'text-emerald-400'}`} />
-                  <span>
-                    {formData.location && locationSource && locationSource !== 'preset'
-                      ? '📍 Location Connected (Active)'
-                      : '📍 Auto-Detect Live Location'}
-                  </span>
-                </>
-              )}
-            </button>
-
-            <span className="text-[11px] text-slate-400 font-mono px-1">or quick select hub:</span>
-
-            {GRID_HUBS.map((hub) => {
-              const isSelected = selectedHubId === hub.id;
-              return (
-                <button
-                  key={hub.id}
-                  type="button"
-                  onClick={() => handleDetectLocation(hub.coords, hub.id, hub.regionName)}
-                  className={`px-2.5 py-1.5 rounded-lg text-[11px] font-mono transition-all flex items-center gap-1.5 cursor-pointer active:scale-95 ${
-                    isSelected
-                      ? 'bg-emerald-600 text-white font-semibold border-2 border-emerald-500 shadow-md shadow-emerald-600/30 ring-2 ring-emerald-400/50 scale-[1.02]'
-                      : 'bg-white/90 hover:bg-white border border-slate-300 text-slate-700 hover:border-emerald-500 hover:text-slate-900'
-                  }`}
-                >
-                  {isSelected && <CheckCircle2 className="w-3 h-3 text-white" />}
-                  <span>{hub.label}</span>
-                </button>
-              );
-            })}
-          </div>
-
-          {/* Active Selected Location Notification Bar */}
-          <div className="flex flex-wrap items-center justify-between gap-2 px-3.5 py-2.5 rounded-xl bg-white/95 border-2 border-emerald-500/40 shadow-sm text-xs font-mono min-h-[46px]">
-            {locLoading ? (
-              <div className="flex items-center gap-2 text-slate-700 py-0.5">
-                <Loader2 className="w-4 h-4 animate-spin text-emerald-600" />
-                <span className="font-semibold text-xs">Live Geolocation & Grid Calibration in Progress...</span>
-                <span className="text-[10px] text-slate-500">(Resolving Grid Zone & Emission Factor)</span>
-              </div>
-            ) : isInternationalLocation ? (
-              <div className="flex items-center justify-between w-full flex-wrap gap-2 py-0.5">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <AlertCircle className="w-4 h-4 text-amber-600 animate-pulse" />
-                  <span className="text-amber-800 uppercase text-[10px] font-bold">Status:</span>
-                  <strong className="text-amber-950 text-xs">
-                    {formData.location || `${internationalLocationName} (International Node)`}
-                  </strong>
-                  <span className="px-2 py-0.5 rounded-md bg-amber-100 text-amber-900 font-semibold text-[10px] border border-amber-300">
-                    Non-Indian Grid Node
-                  </span>
-                </div>
-                <span className="px-2.5 py-0.5 rounded-full bg-amber-100 border border-amber-400 text-amber-900 text-[10px] font-mono font-bold">
-                  ⛔ Select Indian Hub to Proceed
-                </span>
-              </div>
-            ) : formData.location ? (
-              <>
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="relative flex h-2.5 w-2.5">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-600"></span>
-                  </span>
-                  <span className="text-slate-500 uppercase text-[10px] font-bold">Active Location:</span>
-                  <strong className="text-slate-950 text-xs">
-                    {formData.location}
-                  </strong>
-                  {typeof formData.discom === 'string' && formData.discom && (
-                    <span className="px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 font-semibold text-[10px]">
-                      {formData.discom.split('•')[0]?.trim()}
-                    </span>
-                  )}
-                </div>
-
-                <div className="flex items-center gap-2 text-[10px] font-semibold">
-                  {formData.ceaBaselineKgPerKwh && (
-                    <span className="text-slate-600">Grid Factor: <strong className="text-emerald-700">{formData.ceaBaselineKgPerKwh} kg CO₂/kWh</strong></span>
-                  )}
-                  <span className={`px-2 py-0.5 rounded-full border ${
-                    locationSource === 'preset'
-                      ? 'bg-slate-900 text-emerald-400 border-emerald-500/30'
-                      : 'bg-emerald-50 text-emerald-800 border-emerald-400 font-bold'
-                  }`}>
-                    {locationSource === 'preset' ? '⚡ Regional Preset Applied' : '📍 Live Location Detected'}
-                  </span>
-                </div>
-              </>
-            ) : (
-              <div className="flex items-center gap-2 text-slate-600 py-0.5">
-                <MapPin className="w-3.5 h-3.5 text-amber-500" />
-                <span className="font-semibold text-xs">Location Uncalibrated</span>
-                <span className="text-[10px] text-slate-500">• Click "Auto-Detect Live Location" or select a hub below</span>
-              </div>
+          <div className="flex items-center gap-3">
+            {onResetData && hasScraped && (
+              <button
+                type="button"
+                onClick={onResetData}
+                className="px-3 py-1.5 rounded-xl border border-slate-300 hover:border-rose-400 bg-white hover:bg-rose-50 text-slate-600 hover:text-rose-700 text-xs font-mono transition-all flex items-center gap-1.5 cursor-pointer shadow-sm active:scale-95"
+                title="Clear current bill data to upload or enter a fresh facility"
+              >
+                <RotateCcw className="w-3.5 h-3.5 text-slate-500" />
+                <span>Reset / Clear Form</span>
+              </button>
             )}
-          </div>
 
-          {/* Active Synced Government Grid Telemetry Badge */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 pt-2 text-[11px] font-mono">
-            <div className="p-2.5 rounded-xl bg-white/90 border border-slate-200">
-              <span className="text-slate-400 block text-[9px] uppercase">Grid Zone & Factor</span>
-              <strong className="text-slate-900 block truncate">{formData.gridZone || (locLoading ? 'Detecting...' : 'Pending Calibration')}</strong>
-              <span className="text-emerald-700 font-semibold">{formData.ceaBaselineKgPerKwh ? `${formData.ceaBaselineKgPerKwh} kg CO₂/kWh` : '---'}</span>
-            </div>
-
-            <div className="p-2.5 rounded-xl bg-white/90 border border-slate-200">
-              <span className="text-slate-400 block text-[9px] uppercase">Real-Time Solar DNI</span>
-              <strong className="text-amber-700 block">{formData.liveSolarDni ? `${formData.liveSolarDni} W/m²` : (locLoading ? 'Fetching...' : '---')}</strong>
-              <span className="text-slate-500 text-[10px]">Open-Meteo Satellite</span>
-            </div>
-
-            <div className="p-2.5 rounded-xl bg-white/90 border border-slate-200">
-              <span className="text-slate-400 block text-[9px] uppercase">National Grid Freq</span>
-              <strong className="text-blue-700 block">{formData.liveGridFreq ? `${formData.liveGridFreq} Hz` : '50.00 Hz'}</strong>
-              <span className="text-slate-500 text-[10px]">Standard 50.00 Hz Band</span>
-            </div>
-
-            <div className="p-2.5 rounded-xl bg-white/90 border border-slate-200">
-              <span className="text-slate-400 block text-[9px] uppercase">Coordinates</span>
-              <strong className="text-slate-900 block truncate">{formData.latitude && formData.longitude ? `${formData.latitude}° N, ${formData.longitude}° E` : (locLoading ? 'Detecting...' : '---')}</strong>
-              <span className="text-slate-500 text-[10px]">Geo-Matched Hub</span>
+            <div className="text-right sm:text-right font-mono text-xs text-slate-500">
+              <span>Bill Value: </span>
+              <strong className="text-slate-900 text-sm block sm:inline">
+                {formatInr(formData.billAmount)}
+              </strong>
             </div>
           </div>
         </div>
 
         {/* ======================================================== */}
-        {/* BLOCK A: AUTO-EXTRACTED FROM THE BILL                    */}
+        {/* BLOCK A: AUTO-EXTRACTED FROM THE BILL (EDITABLE)         */}
         {/* ======================================================== */}
         <div className="space-y-4">
           <div className="flex items-center gap-2">
@@ -642,7 +210,7 @@ const ExtractedInfoForm = forwardRef(({ extractedData, onSubmitAudit, detectedLo
               A. Extracted From Electricity Bill
             </h3>
             <span className="text-[10px] font-mono text-emerald-700 bg-emerald-500/10 px-2 py-0.5 rounded ml-auto">
-              Auto-filled via OCR
+              Auto-filled via OCR • Fully Editable
             </span>
           </div>
 
@@ -658,6 +226,21 @@ const ExtractedInfoForm = forwardRef(({ extractedData, onSubmitAudit, detectedLo
                 value={formData.facilityName}
                 onChange={(e) => setFormData({ ...formData, facilityName: e.target.value })}
                 placeholder="e.g. Pune Tech Park Campus"
+                className="w-full px-3.5 py-2.5 rounded-xl text-xs bg-emerald-50/40 border border-emerald-300/60 text-slate-900 font-sans focus:outline-none focus:ring-2 focus:ring-emerald-500 font-medium"
+              />
+            </div>
+
+            {/* Facility Location / Address */}
+            <div className="sm:col-span-2">
+              <label className="block text-[11px] font-mono text-slate-500 uppercase mb-1 flex items-center justify-between">
+                <span>Facility Location / Billing Address</span>
+                <span className="text-[10px] text-emerald-700 font-normal">Extracted from Bill or Type Custom</span>
+              </label>
+              <input
+                type="text"
+                value={formData.location}
+                onChange={(e) => setFormData({ ...formData, location: e.target.value })}
+                placeholder="e.g. Hinjawadi Phase 2, Pune, Maharashtra"
                 className="w-full px-3.5 py-2.5 rounded-xl text-xs bg-emerald-50/40 border border-emerald-300/60 text-slate-900 font-sans focus:outline-none focus:ring-2 focus:ring-emerald-500 font-medium"
               />
             </div>
@@ -687,6 +270,20 @@ const ExtractedInfoForm = forwardRef(({ extractedData, onSubmitAudit, detectedLo
                 value={formData.discom}
                 onChange={(e) => setFormData({ ...formData, discom: e.target.value })}
                 placeholder="e.g. MSEDCL HT-1 Commercial"
+                className="w-full px-3.5 py-2.5 rounded-xl text-xs bg-emerald-50/40 border border-emerald-300/60 text-slate-900 font-sans focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              />
+            </div>
+
+            {/* Grid Zone */}
+            <div>
+              <label className="block text-[11px] font-mono text-slate-500 uppercase mb-1">
+                Regional Grid Zone
+              </label>
+              <input
+                type="text"
+                value={formData.gridZone}
+                onChange={(e) => setFormData({ ...formData, gridZone: e.target.value })}
+                placeholder="e.g. Western Grid (IN-WE)"
                 className="w-full px-3.5 py-2.5 rounded-xl text-xs bg-emerald-50/40 border border-emerald-300/60 text-slate-900 font-sans focus:outline-none focus:ring-2 focus:ring-emerald-500"
               />
             </div>
@@ -908,42 +505,20 @@ const ExtractedInfoForm = forwardRef(({ extractedData, onSubmitAudit, detectedLo
         {/* Action Button: Navigate directly to the Audit Page */}
         <div className="pt-6 border-t border-slate-900/10 flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="text-xs font-mono">
-            {isInternationalLocation ? (
-              <span className="text-amber-700 font-semibold flex items-center gap-1.5">
-                <AlertCircle className="w-4 h-4 text-amber-600" />
-                International location active — select an Indian hub above to proceed
-              </span>
-            ) : (
-              <span className="text-slate-500">
-                <span>Detected ToD Peak Exposure: </span>
-                <strong className="text-slate-900 font-semibold">
-                  {formatInr(Number(formData.peakSurcharge) * 12)} / year
-                </strong>
-              </span>
-            )}
+            <span className="text-slate-500">
+              <span>Detected ToD Peak Exposure: </span>
+              <strong className="text-slate-900 font-semibold">
+                {formatInr(Number(formData.peakSurcharge) * 12)} / year
+              </strong>
+            </span>
           </div>
 
           <button
             type="submit"
-            disabled={isInternationalLocation}
-            className={`w-full sm:w-auto px-8 py-4 rounded-full font-semibold text-xs sm:text-sm tracking-wide transition-all shadow-xl flex items-center justify-center gap-3 group ${
-              isInternationalLocation
-                ? 'bg-slate-200 text-slate-400 border border-slate-300 shadow-none cursor-not-allowed'
-                : 'bg-slate-900 hover:bg-slate-800 text-white hover:shadow-2xl hover:scale-105 active:scale-95 cursor-pointer'
-            }`}
+            className="w-full sm:w-auto px-8 py-4 rounded-full font-semibold text-xs sm:text-sm tracking-wide transition-all shadow-xl flex items-center justify-center gap-3 group bg-slate-900 hover:bg-slate-800 text-white hover:shadow-2xl hover:scale-105 active:scale-95 cursor-pointer"
           >
-            <span>
-              {isInternationalLocation
-                ? '⚠️ Indian Hub Selection Required'
-                : 'Generate Full Energy & Tariff Audit Report'}
-            </span>
-            <ArrowRight
-              className={`w-4 h-4 ${
-                isInternationalLocation
-                  ? 'text-slate-400'
-                  : 'text-emerald-400 group-hover:translate-x-1.5 transition-transform'
-              }`}
-            />
+            <span>Generate Full Energy & Tariff Audit Report</span>
+            <ArrowRight className="w-4 h-4 text-emerald-400 group-hover:translate-x-1.5 transition-transform" />
           </button>
         </div>
 

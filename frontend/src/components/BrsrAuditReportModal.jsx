@@ -492,7 +492,7 @@ export default function BrsrAuditReportModal({
   const isBescom = discomStr.includes('BESCOM');
   const isTata = discomStr.includes('Tata Power');
 
-  const location = formData?.location || formData?.region || (isBescom ? 'Bengaluru, Karnataka' : isTata ? 'Delhi-NCR / Haryana' : 'Pune, Maharashtra');
+  const location = formData?.location || formData?.facilityAddress || formData?.region || formData?.facilityName || 'Facility Site';
   const gridZone = formData?.gridZone || (isBescom ? 'Southern Grid (IN-SO)' : isTata ? 'Northern Grid (IN-NO)' : 'Western Grid (IN-WE)');
   const ceaBaseline = Number(formData?.ceaBaselineKgPerKwh || formData?.ceaBaseline) || (isBescom ? 0.690 : isTata ? 0.740 : 0.716);
   const peakPenaltyRate = Number(formData?.peakPenaltyRate) || (isBescom ? 1.25 : isTata ? 1.75 : 1.50);

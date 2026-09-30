@@ -197,16 +197,19 @@ export async function extractBillData(fileBuffer, mimeType = 'application/pdf', 
   if (fileBuffer && configured) {
     try {
       const prompt = `
-        You are an expert energy auditor specializing in Maharashtra State Electricity Distribution Company Limited (MSEDCL) Time-of-Day (TOD) tariffs (HT-I Commercial & Industrial category).
+        You are an expert utility bill auditor and OCR specialist.
         
-        Analyze this electricity bill, meter data log, or backup diesel generator log.
-        Extract the exact numerical billing data and return ONLY a valid JSON object without markdown formatting, code fences, or additional explanation:
+        Analyze this commercial or industrial electricity bill, meter data log, or backup diesel generator log from any Indian utility (e.g. MSEDCL, BESCOM, Tata Power, Adani Electricity, Torrent Power, etc.).
+        Extract all facility, address, billing, and Time-of-Day (ToD) tariff fields accurately and return ONLY a valid JSON object without markdown formatting, code fences, or additional explanation:
 
         {
           "documentType": "electricity_bill" or "diesel_generator_log",
-          "consumerNumber": string (e.g. "012548963210") or null,
+          "consumerNumber": string (e.g. "084729104829") or null,
           "consumerName": string or null,
-          "billingPeriod": string (e.g. "January 2026") or null,
+          "facilityAddress": string (exact physical location, address, city, or state from the bill) or null,
+          "discom": string (e.g. "MSEDCL", "BESCOM", "Tata Power", "Adani Electricity") or null,
+          "gridZone": string (e.g. "Western Grid (IN-WE)", "Southern Grid (IN-SO)", "Northern Grid (IN-NO)") or null,
+          "billingPeriod": string (e.g. "August 2026") or null,
           "tariffCategory": string (e.g. "HT-I Commercial" or "LT-II"),
           "sanctionedLoadKva": number or null,
           "billedDemandKva": number or null,
@@ -245,12 +248,25 @@ export async function extractBillData(fileBuffer, mimeType = 'application/pdf', 
       const parsedData = JSON.parse(cleanedJson);
       parsedData.source = `Live Google Gemini API (${modelName})`;
       parsedData.isLiveExtraction = true;
+      parsedData.location = parsedData.facilityAddress || parsedData.location || '';
 
-      // Compute Scope 1 & 2 emissions on extracted units
+      // Dynamically resolve region from bill DISCOM/address rather than hardcoding
+      const discomLower = (parsedData.discom || '').toLowerCase();
+      const addrLower = (parsedData.facilityAddress || '').toLowerCase();
+      let dynamicRegion = 'pune';
+      if (discomLower.includes('bescom') || addrLower.includes('bengaluru') || addrLower.includes('karnataka')) {
+        dynamicRegion = 'bengaluru';
+      } else if (discomLower.includes('tata') || discomLower.includes('delhi') || addrLower.includes('delhi') || addrLower.includes('gurugram')) {
+        dynamicRegion = 'delhi';
+      } else if (discomLower.includes('adani') || addrLower.includes('mumbai')) {
+        dynamicRegion = 'mumbai';
+      }
+
+      // Compute Scope 1 & 2 emissions dynamically
       const emissions = calculateEmissions({
         gridKwh: parsedData.totalUnitsKwh || 0,
         dieselLiters: parsedData.dieselLitersBurned || 0,
-        region: 'pune'
+        region: dynamicRegion
       });
       parsedData.emissions = emissions;
 
@@ -274,6 +290,7 @@ export async function extractBillData(fileBuffer, mimeType = 'application/pdf', 
           "documentType": "electricity_bill",
           "consumerNumber": "012548963210",
           "consumerName": "Hinjewadi Tech Hub - Tower B",
+          "facilityAddress": "Hinjewadi Phase 2, Pune, Maharashtra",
           "billingPeriod": "August 2026",
           "discom": "MSEDCL (Maharashtra) • HT-1 Commercial",
           "tariffCategory": "HT-I Commercial (Pune Urban)",
@@ -312,6 +329,7 @@ export async function extractBillData(fileBuffer, mimeType = 'application/pdf', 
       parsed.source = `Live Google Gemini API (${modelName})`;
       parsed.isLiveExtraction = true;
       parsed.geminiConfigured = true;
+      parsed.location = parsed.facilityAddress || "Hinjewadi Phase 2, Pune, Maharashtra";
       parsed.emissions = calculateEmissions({
         gridKwh: parsed.totalUnitsKwh || 48500,
         dieselLiters: parsed.dieselLitersBurned || 0,

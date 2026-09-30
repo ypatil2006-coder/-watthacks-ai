@@ -7,8 +7,8 @@ export default function Navbar({
   currentUser = null,
   onOpenAuth,
   onLogout,
-  detectedLocation = null,
-  onDetectLocation = null
+  hasActiveBill = false,
+  onResetBill = null
 }) {
   const canvasRef = useRef(null);
 
@@ -131,35 +131,20 @@ export default function Navbar({
               <span className="absolute -bottom-1 left-0 w-6 h-[2px] bg-brand-apricot rounded-full transition-all duration-300 group-hover:w-full"></span>
             </button>
 
-            {/* GPS / Network Local Grid Badge */}
-            <button
-              onClick={onDetectLocation}
-              title={
-                detectedLocation
-                  ? (detectedLocation.isInternational || detectedLocation.isVpn)
-                    ? `⚠️ International location detected (${detectedLocation.matchedRegionName}). Select an Indian Regional Hub to proceed.`
-                    : `Calibrated to ${detectedLocation.matchedRegionName} (${detectedLocation.discom})`
-                  : "Click to detect and calibrate with device location"
-              }
-              className={`hidden md:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-[11px] font-mono transition cursor-pointer ${
-                detectedLocation && (detectedLocation.isInternational || detectedLocation.isVpn)
-                  ? 'bg-amber-500/10 hover:bg-amber-500/20 border-amber-500/30 text-amber-900'
-                  : 'bg-slate-900/5 hover:bg-slate-900/10 border-slate-900/10 text-slate-700'
-              }`}
-            >
-              <span className={`w-1.5 h-1.5 rounded-full ${
-                detectedLocation && (detectedLocation.isInternational || detectedLocation.isVpn)
-                  ? 'bg-amber-500'
-                  : 'bg-emerald-500'
-              } animate-pulse`}></span>
-              <span>
-                {detectedLocation 
-                  ? ((detectedLocation.isInternational || detectedLocation.isVpn)
-                      ? `⚠️ ${(typeof detectedLocation.matchedRegionName === 'string' ? detectedLocation.matchedRegionName.split('&')[0]?.split('(')[0]?.trim() : '') || 'Outside India'}`
-                      : `📍 ${(typeof detectedLocation.matchedRegionName === 'string' ? detectedLocation.matchedRegionName.split('&')[0]?.split('(')[0]?.trim() : '') || 'Local Grid'} • ${(typeof detectedLocation.discom === 'string' ? detectedLocation.discom.split('(')[0]?.trim() : '') || 'Grid'}`)
-                  : "📍 Detect Local Grid"}
-              </span>
-            </button>
+            {/* Active Audit State Indicator & Quick Reset */}
+            {hasActiveBill && onResetBill && (
+              <button
+                onClick={() => {
+                  onResetBill();
+                  if (onNavigate) onNavigate('bill-audit');
+                }}
+                className="hidden md:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-slate-900/10 hover:border-rose-400 bg-slate-900/5 hover:bg-rose-50 text-slate-700 hover:text-rose-700 text-[11px] font-mono transition cursor-pointer"
+                title="Clear current bill data to upload or review a new facility"
+              >
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                <span>Audit Active • New Ingestion</span>
+              </button>
+            )}
           </div>
 
           {/* Contextual Page Navigation Links (Current Page Only) */}

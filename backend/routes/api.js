@@ -663,7 +663,7 @@ router.post('/audit/generate', async (req, res) => {
   try {
     const b = req.body || {};
     const facilityRaw = b.facility || b;
-    const discomStr = facilityRaw.discom || b.discom || "MSEDCL (Maharashtra)";
+    const discomStr = facilityRaw.discom || b.discom || "State Utility (DISCOM)";
     const isBescom = discomStr.toUpperCase().includes('BESCOM') || (facilityRaw.region || '').toLowerCase().includes('bengaluru');
     const isTata = discomStr.toUpperCase().includes('TATA') || discomStr.toUpperCase().includes('TPDDL') || (facilityRaw.region || '').toLowerCase().includes('delhi');
 
@@ -676,7 +676,7 @@ router.post('/audit/generate', async (req, res) => {
       name: facilityRaw.name || facilityRaw.facilityName || b.facilityName || b.name || "Commercial Facility",
       facilityType: facilityRaw.facilityType || b.facilityType || "Commercial Campus",
       discom: discomStr,
-      region: facilityRaw.region || facilityRaw.location || b.region || b.location || (isBescom ? 'Bengaluru, Karnataka' : isTata ? 'Delhi-NCR / Haryana' : 'Pune, Maharashtra'),
+      region: facilityRaw.region || facilityRaw.location || facilityRaw.facilityAddress || b.region || b.location || 'Commercial Facility Site, India',
       gridZone: resolvedGridZone,
       ceaBaseline: resolvedCea,
       peakPenaltyRate: resolvedPeakRate,
@@ -722,7 +722,7 @@ router.post('/audit/export', async (req, res) => {
   try {
     const b = req.body || {};
     const facilityRaw = b.facility || b;
-    const discomStr = facilityRaw.discom || b.discom || "MSEDCL (Maharashtra)";
+    const discomStr = facilityRaw.discom || b.discom || "State Utility (DISCOM)";
     const isBescom = discomStr.toUpperCase().includes('BESCOM') || (facilityRaw.region || '').toLowerCase().includes('bengaluru');
     const isTata = discomStr.toUpperCase().includes('TATA') || discomStr.toUpperCase().includes('TPDDL') || (facilityRaw.region || '').toLowerCase().includes('delhi');
 
@@ -735,7 +735,7 @@ router.post('/audit/export', async (req, res) => {
       name: facilityRaw.name || facilityRaw.facilityName || b.facilityName || b.name || "Commercial Facility",
       facilityType: facilityRaw.facilityType || b.facilityType || "Commercial Campus",
       discom: discomStr,
-      region: facilityRaw.region || facilityRaw.location || b.region || b.location || (isBescom ? 'Bengaluru, Karnataka' : isTata ? 'Delhi-NCR / Haryana' : 'Pune, Maharashtra'),
+      region: facilityRaw.region || facilityRaw.location || facilityRaw.facilityAddress || b.region || b.location || 'Commercial Facility Site, India',
       gridZone: resolvedGridZone,
       ceaBaseline: resolvedCea,
       peakPenaltyRate: resolvedPeakRate,

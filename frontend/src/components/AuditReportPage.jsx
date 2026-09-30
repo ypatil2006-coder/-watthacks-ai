@@ -500,7 +500,7 @@ export default function AuditReportPage({ auditData, onBackToUpload, onLaunchCon
   const isBescom = discomStr.includes('BESCOM');
   const isTata = discomStr.includes('Tata Power');
 
-  const location = auditData?.location || (isBescom ? 'Bengaluru, Karnataka' : isTata ? 'Delhi-NCR / Haryana' : 'Pune, Maharashtra');
+  const location = auditData?.location || auditData?.facilityAddress || auditData?.facilityName || 'Facility Site';
   const gridZone = auditData?.gridZone || (isBescom ? 'Southern Grid (IN-SO)' : isTata ? 'Northern Grid (IN-NO)' : 'Western Grid (IN-WE)');
   const ceaBaseline = Number(auditData?.ceaBaselineKgPerKwh) || (isBescom ? 0.690 : isTata ? 0.740 : 0.716);
   const peakPenaltyRate = Number(auditData?.peakPenaltyRate) || (isBescom ? 1.25 : isTata ? 1.75 : 1.50);
